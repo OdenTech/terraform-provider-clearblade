@@ -1,2 +1,5 @@
-# terraform-provider-clearblade
-Terraform Clearblade provider
+# Clearblade Terraform Provider
+
+## Project Status
+
+:warning: This project is currently under active development.
