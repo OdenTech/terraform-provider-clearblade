@@ -1,4 +1,4 @@
-# Clearblade Terraform Provider
+# ClearBlade Terraform Provider
 
 ## Project Status
 
