@@ -9,4 +9,4 @@ terraform {
 
 provider "clearblade" {}
 
-
+data "clearblade_registry" "example" {}
