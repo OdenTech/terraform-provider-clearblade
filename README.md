@@ -1,4 +1,4 @@
-# ClearBlade Terraform Provider
+# Clearblade Terraform Provider
 
 ## Project Status
 
@@ -6,20 +6,40 @@
 
 Run the following command to build the provider
 
-```shell
-go build -o terraform-provider-clearblade
-```
-
-## Test sample configuration
-
-First, build and install the provider.
+First, find the GOPATH path where Go installs your binaries. Your path may vary depending on how your Go environment variables are configured.
 
 ```shell
-make install
+go env
 ```
 
-Then, run the following command to initialize the workspace and apply the sample configuration.
+If the GOPATH go environment variable is not set, use the default path, /Users/<Username>/go/bin.
+
+Create a new file called .terraformrc in your home directory (~), then add the dev_overrides block below. Change the <PATH> to the value returned from the go env GOBIN command above.
 
 ```shell
-terraform init && terraform apply
+provider_installation {
+
+  dev_overrides {
+      "clearblade.com/com/clearblade" = "<GOPATH>"
+  }
+
+  # For all other providers, install them directly from their origin provider
+  # registries as normal. If you omit this, Terraform will _only_ use
+  # the dev_overrides block, and so no other providers will be available.
+  direct {}
+}
 ```
+
+## Locally install provider and verify with Terraform
+
+```shell
+go install .
+```
+
+Navigate to the examples directory
+
+```shell
+cd examples
+```
+
+The main.tf Terraform configuration file in this directory uses a "clearblade_registry" data source that the provider does not yet support.
