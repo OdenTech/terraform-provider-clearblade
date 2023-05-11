@@ -3,6 +3,7 @@ package clearblade
 import (
 	"context"
 
+	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -34,6 +35,11 @@ func (p *clearbladeProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 
 // Configure prepares a ClearBlade IoT API client for data sources and resources.
 func (p *clearbladeProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	_, err := iot.NewService(ctx)
+
+	if err != nil {
+
+	}
 }
 
 // DataSources defines the data sources implemented in the provider.

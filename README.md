@@ -12,15 +12,15 @@ First, find the GOPATH path where Go installs your binaries. Your path may vary 
 go env
 ```
 
-If the GOPATH go environment variable is not set, use the default path, /Users/<Username>/go/bin.
+If the GOPATH go environment variable is not set, use the default path, /Users/$Username/go/bin.
 
-Create a new file called .terraformrc in your home directory (~), then add the dev_overrides block below. Change the <PATH> to the value returned from the go env GOBIN command above.
+Create a new file called .terraformrc in your home directory (~), then add the dev_overrides block below. Change the PATH below to GOPATH/bin/ based on the value returned for GOPATH from the command above.
 
 ```shell
 provider_installation {
 
   dev_overrides {
-      "clearblade.com/com/clearblade" = "<GOPATH>"
+      "clearblade.com/com/clearblade" = "<PATH>"
   }
 
   # For all other providers, install them directly from their origin provider
