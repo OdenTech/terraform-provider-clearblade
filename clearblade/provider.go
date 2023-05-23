@@ -106,7 +106,7 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 		return
 	}
 
-	// Make the HashiCups client available during DataSource and Resource
+	// Make the Clearblade IoT Core client available during DataSource and Resource
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
