@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure the implementation satisfies the expected interfaces
@@ -25,7 +26,7 @@ func New() provider.Provider {
 
 // clearbladeProviderModel maps provider schema data to a Go type.
 type clearbladeProviderModel struct {
-	Credentials     types.String `tfsdk:"credentials"`
+	Credentials types.String `tfsdk:"credentials"`
 }
 
 // clearbladeProvider is the provider implementation.
@@ -38,11 +39,18 @@ func (p *clearbladeProvider) Metadata(_ context.Context, _ provider.MetadataRequ
 
 // Schema defines the provider-level schema for configuration data.
 func (p *clearbladeProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = schema.Schema{}
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"credentials": schema.StringAttribute{
+				Required: true,
+			},
+		},
+	}
 }
 
-// Configure prepares a ClearBlade IoT API client for data sources and resources.
+// Configure prepares a ClearBlade IoT Core API client for data sources and resources.
 func (p *clearbladeProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	tflog.Info(ctx, "Configuring ClearBlade IoT Core client")
 
 	// Retrieve provider data from configuration
 	var config clearbladeProviderModel
@@ -114,7 +122,9 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 
 // DataSources defines the data sources implemented in the provider.
 func (p *clearbladeProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		NewDeviceRegistriesDataSource,
+	}
 }
 
 // Resources defines the resources implemented in the provider.
