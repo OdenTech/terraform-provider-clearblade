@@ -226,4 +226,5 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 }
 
 func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var state deviceRegistriesDataSourceModel
 }
