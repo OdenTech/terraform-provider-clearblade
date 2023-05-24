@@ -232,7 +232,7 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
 	tflog.Info(ctx, "requesting device registry listing from Clearblade IoT Core")
-	//deviceRegistries := d.client.Projects.Locations.Registries.List(`projects/example-project/locations/us-central1`);
+	//deviceRegistries, err := d.client.Projects.Locations.Registries.List(`projects/example-project/locations/us-central1`);
 
 
 	

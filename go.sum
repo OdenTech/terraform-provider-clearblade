@@ -2,8 +2,8 @@ cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 cloud.google.com/go v0.105.0 h1:DNtEKRBAAzeS4KyIory52wWHuClNaXJ5x1F7xa4q+5Y=
 cloud.google.com/go/longrunning v0.3.0 h1:NjljC+FYPV3uh5/OwWT6pVU+doBqMg2x/rZlE+CamDs=
 github.com/apparentlymart/go-textseg v1.0.0/go.mod h1:z96Txxhf3xSFMPmb5X/1W05FF/Nj9VFpLOpjS5yuumk=
-github.com/clearblade/go-iot v1.0.5 h1:it76mRAfY3nBdtCufye0K1T1ded7eImFosy9Ib6fEZM=
-github.com/clearblade/go-iot v1.0.5/go.mod h1:rKgmSXqh+xnYW8QaqLG5Mulg5Um7JTUINY1+Sj2HwTY=
+github.com/clearblade/go-iot v1.0.6 h1:iyn3mREokMM5O3JoY0gTftSdF/1JIXu0naXc+qGpZOc=
+github.com/clearblade/go-iot v1.0.6/go.mod h1:rKgmSXqh+xnYW8QaqLG5Mulg5Um7JTUINY1+Sj2HwTY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
