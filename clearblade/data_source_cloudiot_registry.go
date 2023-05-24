@@ -6,6 +6,7 @@ import (
 	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -227,4 +228,12 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 
 func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state deviceRegistriesDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+
+	tflog.Info(ctx, "requesting device registry listing from Clearblade IoT Core")
+	//deviceRegistries := d.client.Projects.Locations.Registries.List(`projects/example-project/locations/us-central1`);
+
+
+	
 }
