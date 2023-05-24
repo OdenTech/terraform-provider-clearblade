@@ -9,7 +9,7 @@ terraform {
 }
 
 provider "clearblade" {
-  credentials = "credentials.json"
+  
 }
 
 data "clearblade_registries" "all" {

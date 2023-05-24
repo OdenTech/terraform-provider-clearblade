@@ -3,9 +3,16 @@ package clearblade
 import (
 	"context"
 
+	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// Ensure the implementation satisfies the expected interfaces.
+var (
+	_ datasource.DataSource              = &deviceRegistriesDataSource{}
+	_ datasource.DataSourceWithConfigure = &deviceRegistriesDataSource{}
 )
 
 // deviceRegistriesDataSourceModel maps the data source schema data.
@@ -44,10 +51,21 @@ func NewDeviceRegistriesDataSource() datasource.DataSource {
 	return &deviceRegistriesDataSource{}
 }
 
-type deviceRegistriesDataSource struct{}
+type deviceRegistriesDataSource struct{
+	client *iot.Service
+}
 
 func (d *deviceRegistriesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_registries"
+}
+
+// Configure adds the provider configured client to the data source.
+func (d *deviceRegistriesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	d.client = req.ProviderData.(*iot.Service)
 }
 
 func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
