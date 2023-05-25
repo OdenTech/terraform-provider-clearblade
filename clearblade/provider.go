@@ -118,6 +118,8 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
+
+	tflog.Info(ctx, "Configured Clearblade IoT Core client", map[string]any{"success": true})
 }
 
 // DataSources defines the data sources implemented in the provider.

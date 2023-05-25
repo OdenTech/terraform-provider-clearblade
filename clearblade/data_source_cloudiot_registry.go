@@ -6,8 +6,8 @@ import (
 	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -16,22 +16,23 @@ var (
 	_ datasource.DataSourceWithConfigure = &deviceRegistriesDataSource{}
 )
 
-
 // deviceRegistriesDataSourceModel maps the data source schema data.
 type deviceRegistriesDataSourceModel struct {
+	Project          types.String            `tfsdk:"project"`
+	Region           types.String            `tfsdk:"region"`
 	DeviceRegistries []deviceRegistriesModel `tfsdk:"device_registries"`
 }
 
 // deviceRegistriesModel maps deviceRegistry schema data.
 type deviceRegistriesModel struct {
-	ID          				types.String               		`tfsdk:"id"`
-	Name                     	types.String                   	`tfsdk:"name"`
-	EventNotificationConfigs 	[]eventNotificationConfigModel 	`tfsdk:"event_notification_configs"`
-	StateNotificationConfig  	stateNotificationConfigModel   	`tfsdk:"state_notification_config"`
-	HttpConfig               	httpConfigModel                	`tfsdk:"http_config"`
-	MqttConfig               	mqttConfigModel                	`tfsdk:"mqtt_config"`
-	LogLevel                 	types.String                   	`tfsdk:"log_level"`
-	Credentials 				[]credentialsModel 				`tfsdk:"credentials"`
+	ID                       types.String                   `tfsdk:"id"`
+	Name                     types.String                   `tfsdk:"name"`
+	EventNotificationConfigs []eventNotificationConfigModel `tfsdk:"event_notification_configs"`
+	StateNotificationConfig  stateNotificationConfigModel   `tfsdk:"state_notification_config"`
+	HttpConfig               httpConfigModel                `tfsdk:"http_config"`
+	MqttConfig               mqttConfigModel                `tfsdk:"mqtt_config"`
+	LogLevel                 types.String                   `tfsdk:"log_level"`
+	Credentials              []credentialsModel             `tfsdk:"credentials"`
 }
 
 type eventNotificationConfigModel struct {
@@ -50,33 +51,33 @@ type mqttConfigModel struct {
 	MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
 }
 type credentialsModel struct {
-	PublicKeyCertificate 	publicKeyCertificateModel `tfsdk:"public_key_certificate"`
+	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
 }
 
 type publicKeyCertificateModel struct {
-	Format 			types.String 		`tfsdk:"format"`
-	Certificate 	types.String 		`tfsdk:"certificate"`
-	X509Details 	x509DetailsModel 	`tfsdk:"x509_details"`
+	Format      types.String     `tfsdk:"format"`
+	Certificate types.String     `tfsdk:"certificate"`
+	X509Details x509DetailsModel `tfsdk:"x509_details"`
 }
 
 type x509DetailsModel struct {
-	X509CertificateDetail x509CertificateDetailModel `tfsdk:"X509_certificate_detail"`
+	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
 }
 
 type x509CertificateDetailModel struct {
-	Issuer 				types.String `tfsdk:"issuer"`
-	Subject 			types.String `tfsdk:"subject"`
-	StartTime 			types.String `tfsdk:"start_time"`
-	ExpiryTime 			types.String `tfsdk:"expiry_time"`
-	SignatureAlgorithm 	types.String `tfsdk:"signature_algorithm"`
-	PublicKeyType 		types.String `tfsdk:"public_key_type"`
+	Issuer             types.String `tfsdk:"issuer"`
+	Subject            types.String `tfsdk:"subject"`
+	StartTime          types.String `tfsdk:"start_time"`
+	ExpiryTime         types.String `tfsdk:"expiry_time"`
+	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
+	PublicKeyType      types.String `tfsdk:"public_key_type"`
 }
 
 func NewDeviceRegistriesDataSource() datasource.DataSource {
 	return &deviceRegistriesDataSource{}
 }
 
-type deviceRegistriesDataSource struct{
+type deviceRegistriesDataSource struct {
 	client *iot.Service
 }
 
@@ -94,9 +95,17 @@ func (d *deviceRegistriesDataSource) Configure(_ context.Context, req datasource
 }
 
 func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-    resp.Schema = schema.Schema{
+	resp.Schema = schema.Schema{
 		Description: "List of device registries in a project.",
 		Attributes: map[string]schema.Attribute{
+			"project": schema.StringAttribute{
+				Required:    true,
+				Description: "The name of the project to list device registries for.",
+			},
+			"region": schema.StringAttribute{
+				Required:    true,
+				Description: "The name of the region to list device registries for.",
+			},
 			"device_registries": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -160,7 +169,7 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 						},
 						"log_level": schema.StringAttribute{
 							Description: "The logging verbosity for device activity. Specifies which events should be written to logs.",
-							Computed: true,
+							Computed:    true,
 						},
 						"credentials": schema.ListNestedAttribute{
 							Computed: true,
@@ -182,7 +191,7 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 														Description: "The certificate data.",
 														Computed:    true,
 													},
-													"X509_certificate_detail": schema.SingleNestedAttribute{
+													"x509_certificate_detail": schema.SingleNestedAttribute{
 														Required:    true,
 														Description: "The certificate details. Used only for X.509 certificates.",
 														Attributes: map[string]schema.Attribute{
@@ -231,9 +240,35 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
+	if state.Project.ValueString() != "" {
+		tflog.SetField(ctx, "project", state.Project.ValueString())
+	}
+
+	if state.Region.ValueString() != "" {
+		tflog.SetField(ctx, "region", state.Region.ValueString())
+	}
+
 	tflog.Info(ctx, "requesting device registry listing from Clearblade IoT Core")
-	//deviceRegistries, err := d.client.Projects.Locations.Registries.List(`projects/example-project/locations/us-central1`);
-
-
+	// To-Do: Seems like the Go client for IoT Core is returning a single value instead of an array of device registries
+	/* parent := fmt.Sprintf("projects/%s/locations/%s", state.Project.ValueString(), state.Region.ValueString())
+	device_registries, err := d.client.Projects.Locations.Registries.List(parent).Do()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to read Clearblade IoT Core device registries. Make sure your credentials are correct and you have access "+
+				"to the project, or that you have the correct permissions.",
+			err.Error(),
+		)
+		return
+	}
+	tflog.Info(ctx, "device registry")
+	tflog.Info(ctx, device_registries)
 	
+	for _, device_registry := range device_registries {
+		drState := deviceRegistriesModel{
+			Name:  types.StringValue(device_registry.Name),
+			LogLevel: types.StringValue(device_registry.LogLevel),
+		}
+		state.DeviceRegistries = append(state.DeviceRegistries, drState)
+	} */
+
 }
