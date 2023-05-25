@@ -3,7 +3,7 @@ module terraform-provider-clearblade
 go 1.20
 
 require (
-	github.com/clearblade/go-iot v1.0.6
+	github.com/clearblade/go-iot v1.0.8
 	github.com/hashicorp/terraform-plugin-framework v1.2.0
 	github.com/hashicorp/terraform-plugin-log v0.8.0
 )
