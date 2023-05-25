@@ -8,9 +8,8 @@ terraform {
 }
 
 provider "clearblade" {
-  
-}
 
+}
 # List all registries
 data "clearblade_registries" "all" {
   project = "api-project-320446546234"
