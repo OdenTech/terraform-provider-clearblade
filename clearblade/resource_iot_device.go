@@ -13,37 +13,37 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &deviceRegistryResource{}
-	_ resource.ResourceWithConfigure = &deviceRegistryResource{}
+	_ resource.Resource              = &deviceResource{}
+	_ resource.ResourceWithConfigure = &deviceResource{}
 	//_ resource.ResourceWithImportState = &deviceRegistryResource{}
 )
 
-type deviceRegistryResourceModel struct {
+type deviceResourceModel struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
 
-func NewDeviceRegistryResource() resource.Resource {
-	return &deviceRegistryResource{}
+func NewDeviceResource() resource.Resource {
+	return &deviceResource{}
 }
 
-// deviceRegistryResource is the resource implementation.
-type deviceRegistryResource struct {
+// deviceResource is the resource implementation.
+type deviceResource struct {
 	client *iot.Service
 }
 
 // Metadata returns the data source type name.
-func (r *deviceRegistryResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_iot_registry"
+func (r *deviceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_iot_device"
 }
 
 // Schema defines the schema for the resource.
-func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{}
 }
 
 // Configure adds the provider configured client to the data source.
-func (r *deviceRegistryResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *deviceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured
 	if req.ProviderData == nil {
 		return
@@ -62,19 +62,19 @@ func (r *deviceRegistryResource) Configure(ctx context.Context, req resource.Con
 }
 
 // Create creates the resource and sets the initial Terraform state.
-func (r *deviceRegistryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Debug(ctx, "Creating iot device registry resource")
 }
 
 // Read refreshes the Terraform state with the latest data.
-func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
-func (r *deviceRegistryResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
-func (r *deviceRegistryResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 }
