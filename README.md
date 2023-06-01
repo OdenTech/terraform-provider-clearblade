@@ -41,5 +41,3 @@ Navigate to the examples directory
 ```shell
 cd examples
 ```
-
-The main.tf Terraform configuration file in this directory uses a "clearblade_registry" data source that the provider does not yet support.
