@@ -3,7 +3,7 @@
 terraform {
   required_providers {
     clearblade = {
-      source = "clearblade.com/dev/clearblade"
+      source = "clearblade/clearblade"
     }
   }
 }
