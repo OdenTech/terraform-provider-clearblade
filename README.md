@@ -2,8 +2,6 @@
 
 ## Project Status
 
-:warning: This project is currently under active development.
-
 Run the following command to build the provider
 
 First, find the GOPATH path where Go installs your binaries. Your path may vary depending on how your Go environment variables are configured.
