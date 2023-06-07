@@ -20,11 +20,22 @@ var (
 )
 
 type deviceResourceModel struct {
-	Name        types.String `tfsdk:"name"`
 	Registry    types.String `tfsdk:"registry"`
 	Project     types.String `tfsdk:"project"`
 	Region      types.String `tfsdk:"region"`
 	LastUpdated types.String `tfsdk:"last_updated"`
+	Device      *deviceModel `tfsdk:"device"`
+}
+
+type deviceModel struct {
+	ID types.String `tfsdk:"id"`
+	//Name          types.String        `tfsdk:"name"`
+	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
+}
+
+type gatewayConfigModel struct {
+	GatewayType       types.String `tfsdk:"gateway_type"`
+	GatewayAuthMethod types.String `tfsdk:"gateway_auth_method"`
 }
 
 func NewDeviceResource() resource.Resource {
@@ -45,24 +56,44 @@ func (r *deviceResource) Metadata(_ context.Context, req resource.MetadataReques
 func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the device.",
-				Required:            true,
-			},
 			"registry": schema.StringAttribute{
-				MarkdownDescription: "The name of the device registry.",
+				MarkdownDescription: "The name of the device registry where this device should be created.",
 				Required:            true,
 			},
 			"project": schema.StringAttribute{
-				MarkdownDescription: "The name of the device registry.",
+				MarkdownDescription: "The id of the project.",
 				Required:            true,
 			},
 			"region": schema.StringAttribute{
-				MarkdownDescription: "The name of the device registry.",
+				MarkdownDescription: "The name of the cloud region.",
 				Required:            true,
 			},
 			"last_updated": schema.StringAttribute{
 				Computed: true,
+			},
+			"device": schema.SingleNestedAttribute{
+				MarkdownDescription: "A unique resource.",
+				Required:            true,
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						MarkdownDescription: "A unique name for the device resource.",
+						Required:            true,
+					},
+					"gateway_config": schema.SingleNestedAttribute{
+						MarkdownDescription: "Gateway-related configuration and state.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"gateway_type": schema.StringAttribute{
+								MarkdownDescription: "Indicates whether the device is a gateway.",
+								Optional:            true,
+							},
+							"gateway_auth_method": schema.StringAttribute{
+								MarkdownDescription: "Indicates how to authorize and/or authenticate devices to access the gateway.",
+								Optional:            true,
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -89,7 +120,7 @@ func (r *deviceResource) Configure(ctx context.Context, req resource.ConfigureRe
 
 // Create creates the resource and sets the initial Terraform state.
 func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	tflog.Debug(ctx, "Creating iot device registry resource")
+	tflog.Debug(ctx, "Creating iot device resource")
 
 	var plan deviceResourceModel
 	diags := req.Plan.Get(ctx, &plan)
@@ -98,16 +129,19 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	//var device iot.Device
-
-	device := iot.Device{
-		Id: plan.Name.ValueString(),
+	payload := &iot.Device{}
+	payload.Id = plan.Device.ID.ValueString()
+	if plan.Device.GatewayConfig.GatewayType.ValueString() != "" {
+		payload.GatewayConfig = &iot.GatewayConfig{
+			GatewayType:       plan.Device.GatewayConfig.GatewayType.ValueString(),
+			GatewayAuthMethod: plan.Device.GatewayConfig.GatewayAuthMethod.ValueString(),
+		}
 	}
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", plan.Project.ValueString(), plan.Region.ValueString(), plan.Registry.ValueString())
 
 	// Create new device
-	_, err := r.client.Projects.Locations.Registries.Devices.Create(parent, &device).Do()
+	_, err := r.client.Projects.Locations.Registries.Devices.Create(parent, payload).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating a device",
