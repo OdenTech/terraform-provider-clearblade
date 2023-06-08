@@ -20,7 +20,7 @@ terraform {
   }
 }
 
-# Configure the planetscale provider
+# Configure the Clearblade provider
 provider "clearblade" {
 
 }
