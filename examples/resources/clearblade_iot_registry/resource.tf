@@ -2,8 +2,8 @@
 terraform {
   required_providers {
     clearblade = {
-      version = "1.0.0"
-      source  = "clearblade.com/dev/clearblade"
+      version = "0.0.0-beta.4"
+      source  = "clearblade/clearblade"
     }
   }
 }

@@ -16,7 +16,7 @@ import (
 var (
 	_ resource.Resource              = &deviceResource{}
 	_ resource.ResourceWithConfigure = &deviceResource{}
-	//_ resource.ResourceWithImportState = &deviceRegistryResource{}
+	//_ resource.ResourceWithImportState = &deviceResource{}
 )
 
 type deviceResourceModel struct {
