@@ -28,9 +28,9 @@ type deviceRegistriesModel struct {
 	ID                       types.String                   `tfsdk:"id"`
 	Name                     types.String                   `tfsdk:"name"`
 	EventNotificationConfigs []eventNotificationConfigModel `tfsdk:"event_notification_configs"`
-	StateNotificationConfig  stateNotificationConfigModel   `tfsdk:"state_notification_config"`
-	HttpConfig               httpConfigModel                `tfsdk:"http_config"`
-	MqttConfig               mqttConfigModel                `tfsdk:"mqtt_config"`
+	StateNotificationConfig  stateNotificationConfigModell  `tfsdk:"state_notification_config"`
+	HttpConfig               httpConfigModell               `tfsdk:"http_config"`
+	MqttConfig               mqttConfigModell               `tfsdk:"mqtt_config"`
 	LogLevel                 types.String                   `tfsdk:"log_level"`
 	Credentials              []credentialsModel             `tfsdk:"credentials"`
 }
@@ -40,14 +40,14 @@ type eventNotificationConfigModel struct {
 	PubsubTopicName  types.String `tfsdk:"pubsub_topic_name"`
 }
 
-type stateNotificationConfigModel struct {
+type stateNotificationConfigModell struct {
 	PubsubTopicName types.String `tfsdk:"pubsub_topic_name"`
 }
 
-type httpConfigModel struct {
+type httpConfigModell struct {
 	HttpEnabledState types.String `tfsdk:"http_enabled_state"`
 }
-type mqttConfigModel struct {
+type mqttConfigModell struct {
 	MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
 }
 type credentialsModel struct {
