@@ -236,5 +236,6 @@ func (p *clearbladeProvider) DataSources(_ context.Context) []func() datasource.
 func (p *clearbladeProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewDeviceResource,
+		NewDeviceRegistryResource,
 	}
 }

@@ -3,6 +3,7 @@ package clearblade
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -172,6 +173,64 @@ func (r *deviceRegistryResource) Configure(ctx context.Context, req resource.Con
 // Create creates the resource and sets the initial Terraform state.
 func (r *deviceRegistryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Debug(ctx, "Creating iot device registry resource")
+
+	var plan deviceRegistryResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	eventNotificationConfigs := []*iot.EventNotificationConfig{}
+	for _, v := range plan.Registry.EventNotificationConfigs {
+		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
+			PubsubTopicName:  v.PubsubTopicName.ValueString(),
+			SubfolderMatches: v.SubfolderMatches.ValueString(),
+		})
+	}
+
+	stateNotificationConfig := &iot.StateNotificationConfig{
+		PubsubTopicName: plan.Registry.StateNotificationConfig.PubsubTopicName.ValueString(),
+	}
+
+	mqttConfig := &iot.MqttConfig{
+		MqttEnabledState: plan.Registry.MqttConfig.MqttConfig.ValueString(),
+	}
+
+	httpConfig := &iot.HttpConfig{
+		HttpEnabledState: plan.Registry.HttpConfig.HttpConfig.ValueString(),
+	}
+
+	createRequestPayload := iot.DeviceRegistry{
+		Id:                       plan.Registry.ID.ValueString(),
+		EventNotificationConfigs: eventNotificationConfigs,
+		StateNotificationConfig:  stateNotificationConfig,
+		MqttConfig:               mqttConfig,
+		HttpConfig:               httpConfig,
+		LogLevel:                 plan.Registry.LogLevel.ValueString(),
+	}
+
+	parent := fmt.Sprintf("projects/%s/locations/%s", plan.Project.ValueString(), plan.Region.ValueString())
+
+	// Create new registry
+	_, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating a device registry",
+			"Could not create a new device registry, unexpected error: "+err.Error(),
+		)
+		return
+	}
+	tflog.Debug(ctx, "Created a device registry")
+
+	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Read refreshes the Terraform state with the latest data.
