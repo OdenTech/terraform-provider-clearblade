@@ -1,27 +1,64 @@
-# ClearBlade Terraform provider
+<div align="center">
+   <p>ClearBlade Terraform provider (Beta).</p>
+   <a href="https://clearblade.atlassian.net/wiki/spaces/IC/overview"><img src="https://img.shields.io/static/v1?label=Docs&message=API Ref&color=000000&style=for-the-badge" /></a>
+  <a href="https://opensource.org/licenses/MPL-2.0"><img src="https://img.shields.io/badge/License-MPL-blue.svg?style=for-the-badge" /></a>
+</div>
 
-A modern (protocol 6) Terraform provider for the ClearBlade IoT Core service (work-in-progress)
 
-## `Development status`
+## Authentication
 
-This Terraform provider code for the ClearBlade IoT Core service is currently in preview.
+Developers will need to create or download a ClearBlade service account credential within your [ClearBlade IoT Core Developer Portal](https://iot.clearblade.com/iot-core/) to make API requests. You can use your existing ClearBlade IoT Core account to log in to the Developer Portal. Once you are in the Developer Portal, [add service accounts to a project](https://clearblade.atlassian.net/wiki/spaces/IC/pages/2240675843/) and download the JSON file with your service account's credentials.
 
-## Getting started
+Use the following to set your credentials in your terminal or IDE environment:
 
-Add this provider to your Terraform configuration block:
+   ```
+    export CLEARBLADE_CONFIGURATION=/path/to/file.json
+   ```
 
-```terraform
+<!-- Start SDK Installation -->
+## SDK Installation
+
+To install this provider, copy and paste this code into your Terraform configuration. Then, run `terraform init`.
+
+```hcl
 terraform {
   required_providers {
     clearblade = {
-      source = "clearblade/clearblade"
-      version = "0.0.0-beta.5"
+      source = "ClearBlade/clearblade"
+      version = "0.0.0-beta.6"
     }
   }
 }
 
-# Configure the ClearBlade provider
 provider "clearblade" {
-
+  # Configuration options
 }
 ```
+<!-- End SDK Installation -->
+
+## Testing the provider locally
+
+Terraform allows you to use local provider builds by setting a `dev_overrides` block in a configuration file called `.terraformrc`. This block overrides all other configured installation methods.
+
+Terraform searches for the `.terraformrc` file in your home directory and applies any configuration settings you set.
+
+```
+provider_installation {
+
+  dev_overrides {
+      "ClearBlade/clearblade" = "<PATH>"
+  }
+
+  # For all other providers, install them directly from their origin provider
+  # registries as normal. If you omit this, Terraform will _only_ use
+  # the dev_overrides block, and so no other providers will be available.
+  direct {}
+}
+```
+
+Your `<PATH>` may vary depending on how your Go environment variables are configured. Execute `go env GOBIN` to set it, then set the `<PATH>` to the value returned. If nothing is returned, set it to the default location, `$HOME/go/bin`.
+
+### Contributions
+
+While we value open-source contributions to this SDK, this library is generated programmatically.
+Feel free to open a PR or a Github issue as a proof of concept and we'll do our best to include it in a future release!

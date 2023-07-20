@@ -3,8 +3,8 @@
 terraform {
   required_providers {
     clearblade = {
-      source = "clearblade/clearblade"
-      version = "0.0.0-beta.5"
+      source = "ClearBlade/clearblade"
+      version = "0.0.0-beta.6"
     }
   }
 }
@@ -13,6 +13,3 @@ provider "clearblade" {
   
 }
 
-data "clearblade_registries" "all" {
-
-}
