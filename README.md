@@ -46,7 +46,7 @@ Terraform searches for the `.terraformrc` file in your home directory and applie
 provider_installation {
 
   dev_overrides {
-      "ClearBlade/clearblade" = "<PATH>"
+      "registry.terraform.io/ClearBlade/clearblade" = "<PATH>"
   }
 
   # For all other providers, install them directly from their origin provider
