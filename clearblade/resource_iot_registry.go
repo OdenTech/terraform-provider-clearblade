@@ -173,7 +173,7 @@ func (r *deviceRegistryResource) Configure(ctx context.Context, req resource.Con
 // Create creates the resource and sets the initial Terraform state.
 func (r *deviceRegistryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Debug(ctx, "Creating iot device registry resource")
-
+	
 	var plan deviceRegistryResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)

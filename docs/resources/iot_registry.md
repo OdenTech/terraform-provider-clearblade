@@ -17,14 +17,15 @@ description: |-
 terraform {
   required_providers {
     clearblade = {
-      version = "0.0.0-beta.6"
+      version = "0.0.0-beta.7"
       source  = "ClearBlade/clearblade"
     }
   }
 }
 
 provider "clearblade" {
-
+  # Configuration options
+  credentials = var.clearblade-creds
 }
 
 # https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloudiot_registry

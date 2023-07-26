@@ -26,13 +26,14 @@ terraform {
   required_providers {
     clearblade = {
       source = "ClearBlade/clearblade"
-      version = "0.0.0-beta.6"
+      version = "0.0.0-beta.7"
     }
   }
 }
 
 provider "clearblade" {
-  
+  # Configuration options
+  credentials = var.clearblade-creds
 }
 ```
 
