@@ -60,6 +60,15 @@ provider_installation {
 
 Your `<PATH>` may vary depending on how your Go environment variables are configured. Execute `go env GOBIN` to set it, then set the `<PATH>` to the value returned. If nothing is returned, set it to the default location, `$HOME/go/bin`.
 
+## Creating a new release
+
+To create a new release execute the following commands:
+
+```shell
+# Use sem var for tags, i.e. v0.0.1
+git tag [tag]
+git push origin [tag]
+```
 ### Contributions
 
 While we value open-source contributions to this SDK, this library is generated programmatically.
