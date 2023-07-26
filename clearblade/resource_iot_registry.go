@@ -3,6 +3,7 @@ package clearblade
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/clearblade/go-iot"
@@ -181,6 +182,7 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	// Generate API request body from plan
 	eventNotificationConfigs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.Registry.EventNotificationConfigs {
 		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
@@ -213,7 +215,7 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	parent := fmt.Sprintf("projects/%s/locations/%s", plan.Project.ValueString(), plan.Region.ValueString())
 
 	// Create new registry
-	_, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
+	registry, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating a device registry",
@@ -222,6 +224,9 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 	tflog.Debug(ctx, "Created a device registry")
+
+	// Map response body to schema and populate Computed attribute values
+	plan.Project = types.StringValue(registry.Id)
 
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
