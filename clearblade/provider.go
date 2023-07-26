@@ -122,7 +122,7 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 // DataSources defines the data sources implemented in the provider.
 func (p *clearbladeProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		//NewDeviceRegistriesDataSource,
+		NewDeviceRegistriesDataSource,
 	}
 }
 

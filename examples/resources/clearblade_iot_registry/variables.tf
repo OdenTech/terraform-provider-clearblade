@@ -1,6 +1,6 @@
 variable "clearblade-creds" {
   type    = string
-  default = "clearblade_service_account_json_auth_file"
+  default = "Path to ClearBlade's service-account JSON Auth File"
 }
 
 variable "gcp_project_id" {
