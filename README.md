@@ -4,18 +4,18 @@
   <a href="https://opensource.org/licenses/MPL-2.0"><img src="https://img.shields.io/badge/License-MPL-blue.svg?style=for-the-badge" /></a>
 </div>
 
-
 ## Authentication
 
 Developers will need to create or download a ClearBlade service account credential within your [ClearBlade IoT Core Developer Portal](https://iot.clearblade.com/iot-core/) to make API requests. You can use your existing ClearBlade IoT Core account to log in to the Developer Portal. Once you are in the Developer Portal, [add service accounts to a project](https://clearblade.atlassian.net/wiki/spaces/IC/pages/2240675843/) and download the JSON file with your service account's credentials.
 
 Use the provider block to configure the path to your service account's JSON file for authentication. Optionally, the following environment variable can be used to set your credentials in your terminal or IDE environment:
 
-   ```
-    export CLEARBLADE_CONFIGURATION=/path/to/file.json
-   ```
+```
+ export CLEARBLADE_CONFIGURATION=/path/to/file.json
+```
 
 <!-- Start SDK Installation -->
+
 ## SDK Installation
 
 To install this provider, copy and paste this code into your Terraform configuration. Then, run `terraform init`.
@@ -35,6 +35,7 @@ provider "clearblade" {
   credentials = var.clearblade-creds
 }
 ```
+
 <!-- End SDK Installation -->
 
 ## Testing the provider locally
