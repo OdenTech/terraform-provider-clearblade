@@ -8,8 +8,6 @@ description: |-
 
 # clearblade_iot_registry (Resource)
 
-
-
 ## Example Usage
 
 ```terraform
@@ -17,7 +15,7 @@ description: |-
 terraform {
   required_providers {
     clearblade = {
-      version = "0.0.0-beta.7"
+      version = "0.1.0"
       source  = "ClearBlade/clearblade"
     }
   }
@@ -28,39 +26,37 @@ provider "clearblade" {
   credentials = var.clearblade-creds
 }
 
-# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloudiot_registry
-
-resource "clearblade_iot_registry" "iot-registry" {
-  project = "project-id"
-  region  = "us-central1"
+resource "clearblade_iot_registry" "example-registry" {
+  project = var.gcp_project_id
+  region  = var.gcp_region
   registry = {
-    id = "tf-registry-101"
+    id = var.registry_id
 
     event_notification_configs = [
       {
-        pubsub_topic_name = "projects/api-project-320446546234/topics/rootevent"
-        subfolder_matches = "test/path"
+        pubsub_topic_name = var.event_topic_name
+        subfolder_matches = var.event_subfolder_matches
       },
 
       {
-        pubsub_topic_name = "projects/api-project-320446546234/topics/rootevent"
+        pubsub_topic_name = var.event_topic_name
         subfolder_matches = ""
       }
     ]
 
     state_notification_config = {
-      pubsub_topic_name = "projects/api-project-320446546234/topics/rootevent"
+      pubsub_topic_name = var.state_topic_name
     }
 
     mqtt_config = {
-      mqtt_enabled_state = "MQTT_ENABLED"
+      mqtt_config = "MQTT_ENABLED"
     }
 
     http_config = {
-      http_enabled_state = "HTTP_ENABLED"
+      http_config = "HTTP_DISABLED"
     }
 
-    log_level = "INFO"
+    log_level = var.log_level
   }
 
 }
