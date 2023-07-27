@@ -12,7 +12,7 @@ provider "clearblade" {
   credentials = var.clearblade-creds
 }
 
-resource "clearblade_iot_registry" "test-registry" {
+resource "clearblade_iot_registry" "example-registry" {
   project = var.gcp_project_id
   region  = var.gcp_region
   registry = {
