@@ -25,7 +25,7 @@ terraform {
   required_providers {
     clearblade = {
       source = "ClearBlade/clearblade"
-      version = "0.0.0-beta.7"
+      version = "0.1.0"
     }
   }
 }
@@ -69,6 +69,7 @@ To create a new release execute the following commands:
 git tag [tag]
 git push origin [tag]
 ```
+
 ### Contributions
 
 While we value open-source contributions to this SDK, this library is generated programmatically.
