@@ -3,10 +3,10 @@ package clearblade
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/clearblade/go-iot"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -15,9 +15,9 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &deviceRegistryResource{}
-	_ resource.ResourceWithConfigure = &deviceRegistryResource{}
-	//_ resource.ResourceWithImportState = &deviceRegistryResource{}
+	_ resource.Resource                = &deviceRegistryResource{}
+	_ resource.ResourceWithConfigure   = &deviceRegistryResource{}
+	_ resource.ResourceWithImportState = &deviceRegistryResource{}
 )
 
 type deviceRegistryResourceModel struct {
@@ -174,7 +174,7 @@ func (r *deviceRegistryResource) Configure(ctx context.Context, req resource.Con
 // Create creates the resource and sets the initial Terraform state.
 func (r *deviceRegistryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Debug(ctx, "Creating iot device registry resource")
-	
+
 	var plan deviceRegistryResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -226,7 +226,9 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	tflog.Debug(ctx, "Created a device registry")
 
 	// Map response body to schema and populate Computed attribute values
-	plan.Project = types.StringValue(registry.Id)
+	plan.Registry.ID = types.StringValue(registry.Id)
+	//plan.Project = types.StringValue(plan.Project.ValueString())
+	//plan.Region = types.StringValue(plan.Region.ValueString())
 
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
@@ -238,8 +240,41 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	}
 }
 
-// Read refreshes the Terraform state with the latest data.
+// Read resource information and refreshes the Terraform state with the latest data.
 func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get current state
+	var state deviceRegistryResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get refreshed registry value from ClearBlade IoT Core
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", state.Project.ValueString(), state.Region.ValueString(), state.Registry.ID.ValueString())
+	registry, err := r.client.Projects.Locations.Registries.Get(parent).Do()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading ClearBlade IoT Core Registry",
+			"Could not read ClearBlade IoT Core registry ID "+state.Registry.ID.ValueString()+": "+err.Error(),
+		)
+		return
+	}
+
+	state.Registry.ID = types.StringValue(registry.Id)
+	state.Registry.HttpConfig.HttpConfig = types.StringValue(registry.HttpConfig.HttpEnabledState)
+	state.Registry.MqttConfig.MqttConfig = types.StringValue(registry.MqttConfig.MqttEnabledState)
+	state.Registry.Name = types.StringValue(registry.Name)
+	state.Registry.LogLevel = types.StringValue(registry.LogLevel)
+	//state.Registry.EventNotificationConfigs = types.StringValue(registry.EventNotificationConfigs)
+	state.Registry.StateNotificationConfig.PubsubTopicName = types.StringValue(registry.StateNotificationConfig.PubsubTopicName)
+
+	// Set refreshed state
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 }
 
@@ -249,4 +284,28 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *deviceRegistryResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Retrieve values from state
+	var state deviceRegistryResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Delete existing registry
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", state.Project.ValueString(), state.Region.ValueString(), state.Registry.ID.ValueString())
+
+	_, err := r.client.Projects.Locations.Registries.Delete(parent).Do()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Deleting ClearBlade IoT Core Registry",
+			"Could not delete Registry, unexpected error: "+err.Error(),
+		)
+		return
+	}
+}
+
+func (r *deviceRegistryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
