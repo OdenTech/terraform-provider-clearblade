@@ -36,10 +36,8 @@ func New() provider.Provider {
 // clearbladeProviderModel maps provider schema data to a Go type.
 type clearbladeProviderModel struct {
 	Credentials types.String `tfsdk:"credentials"`
-	/* Project types.String `tfsdk:"project"`
-	Region  types.String `tfsdk:"region"`
-	Registry    types.String `tfsdk:"registry"`
-	Credentials types.String `tfsdk:"credentials"` */
+	Project     types.String `tfsdk:"project"`
+	Region      types.String `tfsdk:"region"`
 }
 
 // clearbladeProvider is the provider implementation.
@@ -64,6 +62,12 @@ func (p *clearbladeProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 				Optional:  true,
 				Sensitive: true,
 			},
+			"project": schema.StringAttribute{
+				Optional: true,
+			},
+			"region": schema.StringAttribute{
+				Optional: true,
+			},
 		},
 	}
 }
@@ -84,6 +88,24 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 
 	tflog.Debug(ctx, "Creating Clearblade IoT Core client")
 
+	if config.Project.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("project"),
+			"Unknown Clearblade IoT Core Project",
+			"The provider cannot create the Clearblade IoT Core client as there is an unknown configuration value for the Clearblade IoT Core Project. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the CLEARBLADE_CONFIGURATION environment variable.",
+		)
+	}
+
+	if config.Region.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("region"),
+			"Unknown Clearblade IoT Core Region",
+			"The provider cannot create the Clearblade IoT Core client as there is an unknown configuration value for the Clearblade IoT Core Region. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the CLEARBLADE_REGION environment variable.",
+		)
+	}
+
 	if config.Credentials.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("credentials"),
@@ -98,6 +120,8 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 	}
 
 	os.Setenv("CLEARBLADE_CONFIGURATION", config.Credentials.ValueString())
+	os.Setenv("CLEARBLADE_PROJECT", config.Project.ValueString())
+	os.Setenv("CLEARBLADE_REGION", config.Region.ValueString())
 
 	// Create a new Clearblade IoT Core client using the configuration values
 	client, err := iot.NewService(ctx)
