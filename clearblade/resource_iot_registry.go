@@ -3,7 +3,7 @@ package clearblade
 import (
 	"context"
 	"fmt"
-	"time"
+	"os"
 
 	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -20,14 +20,16 @@ var (
 	_ resource.ResourceWithImportState = &deviceRegistryResource{}
 )
 
+/*
 type deviceRegistryResourceModel struct {
 	Project     types.String   `tfsdk:"project"`
 	Region      types.String   `tfsdk:"region"`
 	LastUpdated types.String   `tfsdk:"last_updated"`
 	Registry    *registryModel `tfsdk:"registry"`
 }
+*/
 
-type registryModel struct {
+type deviceRegistryResourceModel struct {
 	ID                       types.String                    `tfsdk:"id"`
 	Name                     types.String                    `tfsdk:"name"`
 	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
@@ -35,6 +37,9 @@ type registryModel struct {
 	MqttConfig               *mqttConfigModel                `tfsdk:"mqtt_config"`
 	HttpConfig               *httpConfigModel                `tfsdk:"http_config"`
 	LogLevel                 types.String                    `tfsdk:"log_level"`
+	Region                   types.String                    `tfsdk:"region"`
+	Project                  types.String                    `tfsdk:"project"`
+	LastUpdated              types.String                    `tfsdk:"last_updated"`
 }
 
 type eventNotificationConfigsModel struct {
@@ -71,82 +76,76 @@ func (r *deviceRegistryResource) Metadata(_ context.Context, req resource.Metada
 func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The identifier of this device registry. For example, myRegistry.",
+				Optional:            true,
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "The resource path name. For example, projects/example-project/locations/us-central1/registries/my-registry.",
+				Optional:            true,
+			},
+			"event_notification_configs": schema.ListNestedAttribute{
+				MarkdownDescription: "The configuration for notification of telemetry events received from the device. " +
+					"All telemetry events that were successfully published by the device and acknowledged by Clearblade IoT Core are guaranteed to be delivered to Cloud Pub/Sub.",
+				Required: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"pubsub_topic_name": schema.StringAttribute{
+							MarkdownDescription: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
+							Required:            true,
+						},
+						"subfolder_matches": schema.StringAttribute{
+							MarkdownDescription: "If the subfolder name matches this string exactly, this configuration will be used. The string must not include the leading '/' character. If empty, all strings are matched. " +
+								"This field is used only for telemetry events; subfolders are not supported for state changes.",
+							Required: true,
+						},
+					},
+				},
+			},
+			"state_notification_config": schema.SingleNestedAttribute{
+				MarkdownDescription: "The configuration for notification of new states received from the device.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"pubsub_topic_name": schema.StringAttribute{
+						MarkdownDescription: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
+						Optional:            true,
+					},
+				},
+			},
+			"mqtt_config": schema.SingleNestedAttribute{
+				MarkdownDescription: "The configuration of MQTT for a device registry.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"mqtt_config": schema.StringAttribute{
+						MarkdownDescription: "If enabled, allows connections using the MQTT protocol. Otherwise, MQTT connections to this registry will fail.",
+						Optional:            true,
+					},
+				},
+			},
+			"http_config": schema.SingleNestedAttribute{
+				MarkdownDescription: "The configuration of the HTTP bridge for a device registry.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"http_config": schema.StringAttribute{
+						MarkdownDescription: "If enabled, allows devices to use DeviceService via the HTTP protocol. Otherwise, any requests to DeviceService will fail for this registry.",
+						Optional:            true,
+					},
+				},
+			},
+			"log_level": schema.StringAttribute{
+				MarkdownDescription: "The default logging verbosity for activity from devices in this registry. The verbosity level can be overridden by Device.log_level.",
+				Required:            true,
+			},
 			"project": schema.StringAttribute{
 				MarkdownDescription: "The id of the project.",
-				Required:            true,
+				Optional:            true,
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "The name of the cloud region.",
-				Required:            true,
+				Optional:            true,
 			},
 			"last_updated": schema.StringAttribute{
-				Computed: true,
-			},
-			"registry": schema.SingleNestedAttribute{
-				MarkdownDescription: "A container for a group of devices.",
-				Required:            true,
-				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						MarkdownDescription: "The identifier of this device registry. For example, myRegistry.",
-						Required:            true,
-					},
-					"name": schema.StringAttribute{
-						MarkdownDescription: "The resource path name. For example, projects/example-project/locations/us-central1/registries/my-registry.",
-						Optional:            true,
-					},
-					"event_notification_configs": schema.ListNestedAttribute{
-						MarkdownDescription: "The configuration for notification of telemetry events received from the device. " +
-							"All telemetry events that were successfully published by the device and acknowledged by Clearblade IoT Core are guaranteed to be delivered to Cloud Pub/Sub.",
-						Required: true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"pubsub_topic_name": schema.StringAttribute{
-									MarkdownDescription: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
-									Required:            true,
-								},
-								"subfolder_matches": schema.StringAttribute{
-									MarkdownDescription: "If the subfolder name matches this string exactly, this configuration will be used. The string must not include the leading '/' character. If empty, all strings are matched. " +
-										"This field is used only for telemetry events; subfolders are not supported for state changes.",
-									Required: true,
-								},
-							},
-						},
-					},
-					"state_notification_config": schema.SingleNestedAttribute{
-						MarkdownDescription: "The configuration for notification of new states received from the device.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"pubsub_topic_name": schema.StringAttribute{
-								MarkdownDescription: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
-								Optional:            true,
-							},
-						},
-					},
-					"mqtt_config": schema.SingleNestedAttribute{
-						MarkdownDescription: "The configuration of MQTT for a device registry.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"mqtt_config": schema.StringAttribute{
-								MarkdownDescription: "If enabled, allows connections using the MQTT protocol. Otherwise, MQTT connections to this registry will fail.",
-								Optional:            true,
-							},
-						},
-					},
-					"http_config": schema.SingleNestedAttribute{
-						MarkdownDescription: "The configuration of the HTTP bridge for a device registry.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"http_config": schema.StringAttribute{
-								MarkdownDescription: "If enabled, allows devices to use DeviceService via the HTTP protocol. Otherwise, any requests to DeviceService will fail for this registry.",
-								Optional:            true,
-							},
-						},
-					},
-					"log_level": schema.StringAttribute{
-						MarkdownDescription: "The default logging verbosity for activity from devices in this registry. The verbosity level can be overridden by Device.log_level.",
-						Required:            true,
-					},
-				},
+				Optional: true,
 			},
 		},
 	}
@@ -184,7 +183,7 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	// Generate API request body from plan
 	eventNotificationConfigs := []*iot.EventNotificationConfig{}
-	for _, v := range plan.Registry.EventNotificationConfigs {
+	for _, v := range plan.EventNotificationConfigs {
 		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
 			PubsubTopicName:  v.PubsubTopicName.ValueString(),
 			SubfolderMatches: v.SubfolderMatches.ValueString(),
@@ -192,30 +191,32 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	}
 
 	stateNotificationConfig := &iot.StateNotificationConfig{
-		PubsubTopicName: plan.Registry.StateNotificationConfig.PubsubTopicName.ValueString(),
+		PubsubTopicName: plan.StateNotificationConfig.PubsubTopicName.ValueString(),
 	}
 
 	mqttConfig := &iot.MqttConfig{
-		MqttEnabledState: plan.Registry.MqttConfig.MqttConfig.ValueString(),
+		MqttEnabledState: plan.MqttConfig.MqttConfig.ValueString(),
 	}
 
 	httpConfig := &iot.HttpConfig{
-		HttpEnabledState: plan.Registry.HttpConfig.HttpConfig.ValueString(),
+		HttpEnabledState: plan.HttpConfig.HttpConfig.ValueString(),
 	}
 
 	createRequestPayload := iot.DeviceRegistry{
-		Id:                       plan.Registry.ID.ValueString(),
+		Id:                       plan.ID.ValueString(),
+		Name:                     plan.Name.ValueString(),
 		EventNotificationConfigs: eventNotificationConfigs,
 		StateNotificationConfig:  stateNotificationConfig,
 		MqttConfig:               mqttConfig,
 		HttpConfig:               httpConfig,
-		LogLevel:                 plan.Registry.LogLevel.ValueString(),
+		LogLevel:                 plan.LogLevel.ValueString(),
 	}
 
-	parent := fmt.Sprintf("projects/%s/locations/%s", plan.Project.ValueString(), plan.Region.ValueString())
+	//parent := fmt.Sprintf("projects/%s/locations/%s", plan.Project.ValueString(), plan.Region.ValueString())
+	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"))
 
 	// Create new registry
-	registry, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
+	_, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating a device registry",
@@ -226,11 +227,11 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	tflog.Debug(ctx, "Created a device registry")
 
 	// Map response body to schema and populate Computed attribute values
-	plan.Registry.ID = types.StringValue(registry.Id)
+	//plan.ID = types.StringValue(registry.Id)
 	//plan.Project = types.StringValue(plan.Project.ValueString())
 	//plan.Region = types.StringValue(plan.Region.ValueString())
 
-	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+	//plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -238,6 +239,10 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	tflog.Info(ctx, "In Create method: Start PLAN logging")
+	ctx = tflog.SetField(ctx, "clearblade_provider_plan", plan)
+	tflog.Info(ctx, "In Create method: Stop PLAN logging")
 }
 
 // Read resource information and refreshes the Terraform state with the latest data.
@@ -250,24 +255,28 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
+	tflog.Info(ctx, "In Read method: Start STATE logging")
+	ctx = tflog.SetField(ctx, "clearblade_provider_state", state)
+	tflog.Info(ctx, "In Read method: Stop STATE logging")
+
 	// Get refreshed registry value from ClearBlade IoT Core
-	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", state.Project.ValueString(), state.Region.ValueString(), state.Registry.ID.ValueString())
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), state.ID.ValueString())
 	registry, err := r.client.Projects.Locations.Registries.Get(parent).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading ClearBlade IoT Core Registry",
-			"Could not read ClearBlade IoT Core registry ID "+state.Registry.ID.ValueString()+": "+err.Error(),
+			"Could not read ClearBlade IoT Core registry ID "+state.Name.ValueString()+": "+err.Error(),
 		)
 		return
 	}
 
-	state.Registry.ID = types.StringValue(registry.Id)
-	state.Registry.HttpConfig.HttpConfig = types.StringValue(registry.HttpConfig.HttpEnabledState)
-	state.Registry.MqttConfig.MqttConfig = types.StringValue(registry.MqttConfig.MqttEnabledState)
-	state.Registry.Name = types.StringValue(registry.Name)
-	state.Registry.LogLevel = types.StringValue(registry.LogLevel)
 	//state.Registry.EventNotificationConfigs = types.StringValue(registry.EventNotificationConfigs)
-	state.Registry.StateNotificationConfig.PubsubTopicName = types.StringValue(registry.StateNotificationConfig.PubsubTopicName)
+	//state.StateNotificationConfig.PubsubTopicName = types.StringValue(registry.StateNotificationConfig.PubsubTopicName)
+	//state.MqttConfig.MqttConfig = types.StringValue(registry.MqttConfig.MqttEnabledState)
+	//state.HttpConfig.HttpConfig = types.StringValue(registry.HttpConfig.HttpEnabledState)
+	state.LogLevel = types.StringValue(registry.LogLevel)
+	state.Region = types.StringValue(os.Getenv("CLEARBLADE_REGION"))
+	state.Project = types.StringValue(os.Getenv("CLEARBLADE_PROJECT"))
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -293,7 +302,8 @@ func (r *deviceRegistryResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	// Delete existing registry
-	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", state.Project.ValueString(), state.Region.ValueString(), state.Registry.ID.ValueString())
+	//parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", state.Project.ValueString(), state.Region.ValueString(), state.Registry.ID.ValueString())
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), state.ID.ValueString())
 
 	_, err := r.client.Projects.Locations.Registries.Delete(parent).Do()
 	if err != nil {
