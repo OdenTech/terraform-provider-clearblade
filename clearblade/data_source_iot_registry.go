@@ -57,28 +57,28 @@ type deviceRegistriesModel struct {
 //	type mqttConfigModell struct {
 //		MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
 //	}
-type credentialsModel struct {
-	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
-}
+// type credentialsModel struct {
+// 	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
+// }
 
-type publicKeyCertificateModel struct {
-	Format      types.String     `tfsdk:"format"`
-	Certificate types.String     `tfsdk:"certificate"`
-	X509Details x509DetailsModel `tfsdk:"x509_details"`
-}
+// type publicKeyCertificateModel struct {
+// 	Format      types.String     `tfsdk:"format"`
+// 	Certificate types.String     `tfsdk:"certificate"`
+// 	X509Details x509DetailsModel `tfsdk:"x509_details"`
+// }
 
-type x509DetailsModel struct {
-	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
-}
+// type x509DetailsModel struct {
+// 	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
+// }
 
-type x509CertificateDetailModel struct {
-	Issuer             types.String `tfsdk:"issuer"`
-	Subject            types.String `tfsdk:"subject"`
-	StartTime          types.String `tfsdk:"start_time"`
-	ExpiryTime         types.String `tfsdk:"expiry_time"`
-	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
-	PublicKeyType      types.String `tfsdk:"public_key_type"`
-}
+// type x509CertificateDetailModel struct {
+// 	Issuer             types.String `tfsdk:"issuer"`
+// 	Subject            types.String `tfsdk:"subject"`
+// 	StartTime          types.String `tfsdk:"start_time"`
+// 	ExpiryTime         types.String `tfsdk:"expiry_time"`
+// 	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
+// 	PublicKeyType      types.String `tfsdk:"public_key_type"`
+// }
 
 func NewDeviceRegistriesDataSource() datasource.DataSource {
 	return &deviceRegistriesDataSource{}
@@ -200,7 +200,7 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 											},
 											//
 											"x509_details": schema.SingleNestedAttribute{
-												Required:    true,
+												Optional:    true,
 												Description: "Details of an X.509 certificate.",
 												Attributes: map[string]schema.Attribute{
 													"x509_certificate_detail": schema.SingleNestedAttribute{
@@ -331,8 +331,6 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	// Map response body to model
 	for _, device_registry := range device_registries.DeviceRegistries {
 		registryState := deviceRegistriesModel{
-			// Credentials
-			// EventNotificationConfigs
 			HttpConfig: httpConfigModel{
 				HttpEnabledState: types.StringValue(device_registry.HttpConfig.HttpEnabledState),
 			},
