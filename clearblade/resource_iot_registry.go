@@ -59,6 +59,29 @@ type httpConfigModel struct {
 	HttpEnabledState types.String `tfsdk:"http_enabled_state"`
 }
 
+type credentialsModel struct {
+	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
+}
+
+type publicKeyCertificateModel struct {
+	Format      types.String     `tfsdk:"format"`
+	Certificate types.String     `tfsdk:"certificate"`
+	X509Details x509DetailsModel `tfsdk:"x509_details"`
+}
+
+type x509DetailsModel struct {
+	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
+}
+
+type x509CertificateDetailModel struct {
+	Issuer             types.String `tfsdk:"issuer"`
+	Subject            types.String `tfsdk:"subject"`
+	StartTime          types.String `tfsdk:"start_time"`
+	ExpiryTime         types.String `tfsdk:"expiry_time"`
+	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
+	PublicKeyType      types.String `tfsdk:"public_key_type"`
+}
+
 func NewDeviceRegistryResource() resource.Resource {
 	return &deviceRegistryResource{}
 }
@@ -137,6 +160,70 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The default logging verbosity for activity from devices in this registry. The verbosity level can be overridden by Device.log_level.",
 				Required:            true,
 			},
+			"credentials": schema.ListNestedAttribute{
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					// Attributes: map[string]schema.Attribute{
+					// 	"credential": schema.SingleNestedAttribute{
+					// 		Required:    true,
+					// 		Description: "A server-stored registry credential used to validate device credentials.",
+					Attributes: map[string]schema.Attribute{
+						"public_key_certificate": schema.SingleNestedAttribute{
+							Optional:    true,
+							Description: "A public key certificate format and data.",
+							Attributes: map[string]schema.Attribute{
+								"format": schema.StringAttribute{
+									Description: "The certificate format.",
+									Computed:    true,
+								},
+								"certificate": schema.StringAttribute{
+									Description: "The certificate data.",
+									Computed:    true,
+								},
+								//
+								"x509_details": schema.SingleNestedAttribute{
+									Optional:    true,
+									Description: "Details of an X.509 certificate.",
+									Attributes: map[string]schema.Attribute{
+										"x509_certificate_detail": schema.SingleNestedAttribute{
+											Optional:    true,
+											Description: "The certificate details. Used only for X.509 certificates.",
+											Attributes: map[string]schema.Attribute{
+												"issuer": schema.StringAttribute{
+													Description: "The entity that signed the certificate.",
+													Computed:    true,
+												},
+												"subject": schema.StringAttribute{
+													Description: "The entity the certificate and public key belong to.",
+													Computed:    true,
+												},
+												"start_time": schema.StringAttribute{
+													Description: "The time the certificate becomes valid.",
+													Computed:    true,
+												},
+												"expiry_time": schema.StringAttribute{
+													Description: "The time the certificate becomes invalid.",
+													Computed:    true,
+												},
+												"signature_algorithm": schema.StringAttribute{
+													Description: "The algorithm used to sign the certificate.",
+													Computed:    true,
+												},
+												"public_key_type": schema.StringAttribute{
+													Description: "The type of public key in the certificate.",
+													Computed:    true,
+												},
+											},
+										},
+									},
+								}, //
+							},
+						},
+					},
+					//}, //
+					//},//
+				},
+			},
 			// "project": schema.StringAttribute{
 			// 	MarkdownDescription: "The id of the project.",
 			// 	Optional:            true,
@@ -183,11 +270,31 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// Generate API request body from plan
-	eventNotificationConfigs := []*iot.EventNotificationConfig{}
+	event_notification_configs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
-		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
+		event_notification_configs = append(event_notification_configs, &iot.EventNotificationConfig{
 			PubsubTopicName:  v.PubsubTopicName.ValueString(),
 			SubfolderMatches: v.SubfolderMatches.ValueString(),
+		})
+	}
+
+	credentials := []*iot.RegistryCredential{}
+	for _, v := range plan.Credentials {
+		credentials = append(credentials, &iot.RegistryCredential{
+			PublicKeyCertificate: &iot.PublicKeyCertificate{
+				Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
+				Format:      v.PublicKeyCertificate.Format.ValueString(),
+				X509Details: &iot.X509CertificateDetails{
+					//X509CertificateDetail: &iot. {
+					ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
+					Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
+					PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
+					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
+					StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
+					Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
+					//},
+				},
+			},
 		})
 	}
 
@@ -204,9 +311,10 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	}
 
 	createRequestPayload := iot.DeviceRegistry{
+		EventNotificationConfigs: event_notification_configs,
+		Credentials:              credentials,
 		Id:                       plan.ID.ValueString(),
 		Name:                     plan.Name.ValueString(),
-		EventNotificationConfigs: eventNotificationConfigs,
 		StateNotificationConfig:  stateNotificationConfig,
 		MqttConfig:               mqttConfig,
 		HttpConfig:               httpConfig,
