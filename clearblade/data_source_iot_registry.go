@@ -28,31 +28,35 @@ type deviceRegistriesDataSourceModel struct {
 
 // deviceRegistriesModel maps deviceRegistry schema data.
 type deviceRegistriesModel struct {
-	ID                       types.String                   `tfsdk:"id"`
-	Name                     types.String                   `tfsdk:"name"`
-	EventNotificationConfigs []eventNotificationConfigModel `tfsdk:"event_notification_configs"`
-	StateNotificationConfig  stateNotificationConfigModell  `tfsdk:"state_notification_config"`
-	HttpConfig               httpConfigModell               `tfsdk:"http_config"`
-	MqttConfig               mqttConfigModell               `tfsdk:"mqtt_config"`
-	LogLevel                 types.String                   `tfsdk:"log_level"`
-	Credentials              []credentialsModel             `tfsdk:"credentials"`
+	ID   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
+	//EventNotificationConfigs []eventNotificationConfigModel `tfsdk:"event_notification_configs"`
+	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
+	StateNotificationConfig  stateNotificationConfigModel    `tfsdk:"state_notification_config"`
+	//HttpConfig               httpConfigModell               `tfsdk:"http_config"`
+	HttpConfig httpConfigModel `tfsdk:"http_config"`
+	//MqttConfig               mqttConfigModell               `tfsdk:"mqtt_config"`
+	MqttConfig  mqttConfigModel    `tfsdk:"mqtt_config"`
+	LogLevel    types.String       `tfsdk:"log_level"`
+	Credentials []credentialsModel `tfsdk:"credentials"`
 }
 
-type eventNotificationConfigModel struct {
-	SubFolderMatches types.String `tfsdk:"subfolder_matches"`
-	PubsubTopicName  types.String `tfsdk:"pubsub_topic_name"`
-}
+// type eventNotificationConfigModel struct {
+// 	SubfolderMatches types.String `tfsdk:"subfolder_matches"`
+// 	PubsubTopicName  types.String `tfsdk:"pubsub_topic_name"`
+// }
 
-type stateNotificationConfigModell struct {
-	PubsubTopicName types.String `tfsdk:"pubsub_topic_name"`
-}
+// type stateNotificationConfigModell struct {
+// 	PubsubTopicName types.String `tfsdk:"pubsub_topic_name"`
+// }
 
-type httpConfigModell struct {
-	HttpEnabledState types.String `tfsdk:"http_enabled_state"`
-}
-type mqttConfigModell struct {
-	MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
-}
+//	type httpConfigModell struct {
+//		HttpEnabledState types.String `tfsdk:"http_enabled_state"`
+//	}
+//
+//	type mqttConfigModell struct {
+//		MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
+//	}
 type credentialsModel struct {
 	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
 }
@@ -122,22 +126,22 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 						"event_notification_configs": schema.ListNestedAttribute{
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
+								// Attributes: map[string]schema.Attribute{
+								// 	"event_notification_config": schema.SingleNestedAttribute{
+								// 		Required:    true,
+								// 		Description: "The configuration for forwarding telemetry events.",
 								Attributes: map[string]schema.Attribute{
-									"event_notification_config": schema.SingleNestedAttribute{
-										Required:    true,
-										Description: "The configuration for forwarding telemetry events.",
-										Attributes: map[string]schema.Attribute{
-											"subfolder_matches": schema.StringAttribute{
-												Description: "This field is used only for telemetry events; subfolders are not supported for state changes.",
-												Computed:    true,
-											},
-											"pubsub_topic_name": schema.StringAttribute{
-												Description: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
-												Computed:    true,
-											},
-										},
+									"subfolder_matches": schema.StringAttribute{
+										Description: "This field is used only for telemetry events; subfolders are not supported for state changes.",
+										Computed:    true,
+									},
+									"pubsub_topic_name": schema.StringAttribute{
+										Description: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
+										Computed:    true,
 									},
 								},
+								//}, //
+								//}, //
 							},
 						},
 						"state_notification_config": schema.SingleNestedAttribute{
@@ -177,25 +181,30 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 						"credentials": schema.ListNestedAttribute{
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
+								// Attributes: map[string]schema.Attribute{
+								// 	"credential": schema.SingleNestedAttribute{
+								// 		Required:    true,
+								// 		Description: "A server-stored registry credential used to validate device credentials.",
 								Attributes: map[string]schema.Attribute{
-									"credential": schema.SingleNestedAttribute{
-										Required:    true,
-										Description: "A server-stored registry credential used to validate device credentials.",
+									"public_key_certificate": schema.SingleNestedAttribute{
+										Optional:    true,
+										Description: "A public key certificate format and data.",
 										Attributes: map[string]schema.Attribute{
-											"public_key_certificate": schema.SingleNestedAttribute{
+											"format": schema.StringAttribute{
+												Description: "The certificate format.",
+												Computed:    true,
+											},
+											"certificate": schema.StringAttribute{
+												Description: "The certificate data.",
+												Computed:    true,
+											},
+											//
+											"x509_details": schema.SingleNestedAttribute{
 												Required:    true,
-												Description: "A public key certificate format and data.",
+												Description: "Details of an X.509 certificate.",
 												Attributes: map[string]schema.Attribute{
-													"format": schema.StringAttribute{
-														Description: "The certificate format.",
-														Computed:    true,
-													},
-													"certificate": schema.StringAttribute{
-														Description: "The certificate data.",
-														Computed:    true,
-													},
 													"x509_certificate_detail": schema.SingleNestedAttribute{
-														Required:    true,
+														Optional:    true,
 														Description: "The certificate details. Used only for X.509 certificates.",
 														Attributes: map[string]schema.Attribute{
 															"issuer": schema.StringAttribute{
@@ -225,10 +234,12 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 														},
 													},
 												},
-											},
+											}, //
 										},
 									},
 								},
+								//}, //
+								//},//
 							},
 						},
 					},
@@ -266,71 +277,102 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	tflog.Info(ctx, strconv.Itoa(len(device_registries.DeviceRegistries)))
 
 	/*
-	LIST
-		{
-			"credentials": null,
-			"event_notification_configs": null,
-			"http_config": {
-			  "http_enabled_state": null
-			},
-			"id": "test-registry-tfo-100",
-			"log_level": "INFO",
-			"mqtt_config": {
-			  "mqtt_enabled_state": null
-			},
-			"name": "projects/api-project-320446546234/locations/us-central1/registries/test-registry-tfo-100",
-			"state_notification_config": {
-			  "pubsub_topic_name": null
-			}
-		  }
+		LIST
+			{
+				"credentials": null,
+				"event_notification_configs": null,
+				"http_config": {
+				  "http_enabled_state": null
+				},
+				"id": "test-registry-tfo-100",
+				"log_level": "INFO",
+				"mqtt_config": {
+				  "mqtt_enabled_state": null
+				},
+				"name": "projects/api-project-320446546234/locations/us-central1/registries/test-registry-tfo-100",
+				"state_notification_config": {
+				  "pubsub_topic_name": null
+				}
+			  }
 	*/
 
-
 	/*
-	CREATE
-	{
-		"event_notification_configs": [
-		  {
-			"pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent",
-			"subfolder_matches": "test/path"
-		  },
-		  {
-			"pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent",
-			"subfolder_matches": ""
+		CREATE
+		{
+			"event_notification_configs": [
+			  {
+				"pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent",
+				"subfolder_matches": "test/path"
+			  },
+			  {
+				"pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent",
+				"subfolder_matches": ""
+			  }
+			],
+			"http_config": {
+			  "http_config": "HTTP_DISABLED"
+			},
+			"id": "test-registry-tfo-101",
+			"last_updated": null,
+			"log_level": "INFO",
+			"mqtt_config": {
+			  "mqtt_config": "MQTT_ENABLED"
+			},
+			"name": null,
+			"project": null,
+			"region": null,
+			"state_notification_config": {
+			  "pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent"
+			}
 		  }
-		],
-		"http_config": {
-		  "http_config": "HTTP_DISABLED"
-		},
-		"id": "test-registry-tfo-101",
-		"last_updated": null,
-		"log_level": "INFO",
-		"mqtt_config": {
-		  "mqtt_config": "MQTT_ENABLED"
-		},
-		"name": null,
-		"project": null,
-		"region": null,
-		"state_notification_config": {
-		  "pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent"
-		}
-	  }
 
-	  */
-	
+	*/
 
 	// Map response body to model
 	for _, device_registry := range device_registries.DeviceRegistries {
 		registryState := deviceRegistriesModel{
 			// Credentials
 			// EventNotificationConfigs
-			HttpConfig: httpConfigModell{
+			HttpConfig: httpConfigModel{
 				HttpEnabledState: types.StringValue(device_registry.HttpConfig.HttpEnabledState),
 			},
 			ID:       types.StringValue(device_registry.Id),
-			Name:     types.StringValue(device_registry.Name),
 			LogLevel: types.StringValue(device_registry.LogLevel),
+			MqttConfig: mqttConfigModel{
+				MqttEnabledState: types.StringValue(device_registry.MqttConfig.MqttEnabledState),
+			},
+			Name: types.StringValue(device_registry.Name),
+			StateNotificationConfig: stateNotificationConfigModel{
+				PubsubTopicName: types.StringValue(device_registry.StateNotificationConfig.PubsubTopicName),
+			},
 		}
+
+		for _, credential := range device_registry.Credentials {
+			registryState.Credentials = append(registryState.Credentials, credentialsModel{
+				PublicKeyCertificate: publicKeyCertificateModel{
+					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
+					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
+					X509Details: x509DetailsModel{
+						X509CertificateDetail: x509CertificateDetailModel{
+							Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+							Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+							StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+							ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+							SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+							PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+						},
+					},
+				},
+			})
+		}
+
+		for _, eventNotificationConfig := range device_registry.EventNotificationConfigs {
+			registryState.EventNotificationConfigs = append(registryState.EventNotificationConfigs, eventNotificationConfigsModel{
+				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
+				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
+			})
+		}
+
 		state.DeviceRegistries = append(state.DeviceRegistries, registryState)
 	}
 
