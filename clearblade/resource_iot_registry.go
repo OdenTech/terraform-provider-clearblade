@@ -39,7 +39,7 @@ type deviceRegistryResourceModel struct {
 	LogLevel                 types.String                    `tfsdk:"log_level"`
 	Region                   types.String                    `tfsdk:"region"`
 	Project                  types.String                    `tfsdk:"project"`
-	LastUpdated              types.String                    `tfsdk:"last_updated"`
+	//LastUpdated              types.String                    `tfsdk:"last_updated"`
 }
 
 type eventNotificationConfigsModel struct {
@@ -144,9 +144,9 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The name of the cloud region.",
 				Optional:            true,
 			},
-			"last_updated": schema.StringAttribute{
-				Optional: true,
-			},
+			// "last_updated": schema.StringAttribute{
+			// 	Optional: true,
+			// },
 		},
 	}
 }

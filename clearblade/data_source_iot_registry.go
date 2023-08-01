@@ -331,8 +331,6 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	// Map response body to model
 	for _, device_registry := range device_registries.DeviceRegistries {
 		registryState := deviceRegistriesModel{
-			// Credentials
-			// EventNotificationConfigs
 			HttpConfig: httpConfigModel{
 				HttpEnabledState: types.StringValue(device_registry.HttpConfig.HttpEnabledState),
 			},
