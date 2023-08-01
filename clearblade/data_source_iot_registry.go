@@ -3,6 +3,7 @@ package clearblade
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/clearblade/go-iot"
@@ -20,8 +21,8 @@ var (
 
 // deviceRegistriesDataSourceModel maps the data source schema data.
 type deviceRegistriesDataSourceModel struct {
-	Project          types.String            `tfsdk:"project"`
-	Region           types.String            `tfsdk:"region"`
+	// Project          types.String            `tfsdk:"project"`
+	// Region           types.String            `tfsdk:"region"`
 	DeviceRegistries []deviceRegistriesModel `tfsdk:"device_registries"`
 }
 
@@ -100,14 +101,14 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 	resp.Schema = schema.Schema{
 		Description: "List of device registries in a project.",
 		Attributes: map[string]schema.Attribute{
-			"project": schema.StringAttribute{
-				Required:    true,
-				Description: "The name of the project to list device registries for.",
-			},
-			"region": schema.StringAttribute{
-				Required:    true,
-				Description: "The name of the region to list device registries for.",
-			},
+			// "project": schema.StringAttribute{
+			// 	Required:    true,
+			// 	Description: "The name of the project to list device registries for.",
+			// },
+			// "region": schema.StringAttribute{
+			// 	Required:    true,
+			// 	Description: "The name of the region to list device registries for.",
+			// },
 			"device_registries": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -242,17 +243,16 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
-	if state.Project.ValueString() != "" {
-		tflog.SetField(ctx, "project", state.Project.ValueString())
-	}
+	// if state.Project.ValueString() != "" {
+	// 	tflog.SetField(ctx, "project", state.Project.ValueString())
+	// }
 
-	if state.Region.ValueString() != "" {
-		tflog.SetField(ctx, "region", state.Region.ValueString())
-	}
+	// if state.Region.ValueString() != "" {
+	// 	tflog.SetField(ctx, "region", state.Region.ValueString())
+	// }
 
 	tflog.Info(ctx, "requesting device registry listing from Clearblade IoT Core")
-	// To-Do: Seems like the Go client for IoT Core is returning a single value instead of an array of device registries
-	parent := fmt.Sprintf("projects/%s/locations/%s", state.Project.ValueString(), state.Region.ValueString())
+	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"))
 	device_registries, err := d.client.Projects.Locations.Registries.List(parent).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
