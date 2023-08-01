@@ -275,8 +275,8 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 	//state.MqttConfig.MqttConfig = types.StringValue(registry.MqttConfig.MqttEnabledState)
 	//state.HttpConfig.HttpConfig = types.StringValue(registry.HttpConfig.HttpEnabledState)
 	state.LogLevel = types.StringValue(registry.LogLevel)
-	state.Region = types.StringValue(os.Getenv("CLEARBLADE_REGION"))
-	state.Project = types.StringValue(os.Getenv("CLEARBLADE_PROJECT"))
+	//state.Region = types.StringValue(os.Getenv("CLEARBLADE_REGION"))
+	//state.Project = types.StringValue(os.Getenv("CLEARBLADE_PROJECT"))
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -302,9 +302,7 @@ func (r *deviceRegistryResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	// Delete existing registry
-	//parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", state.Project.ValueString(), state.Region.ValueString(), state.Registry.ID.ValueString())
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), state.ID.ValueString())
-
 	_, err := r.client.Projects.Locations.Registries.Delete(parent).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
