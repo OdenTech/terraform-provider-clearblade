@@ -52,10 +52,10 @@ type stateNotificationConfigModel struct {
 }
 
 type mqttConfigModel struct {
-	MqttConfig types.String `tfsdk:"mqtt_config"`
+	MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
 }
 type httpConfigModel struct {
-	HttpConfig types.String `tfsdk:"http_config"`
+	HttpEnabledState types.String `tfsdk:"http_enabled_state"`
 }
 
 func NewDeviceRegistryResource() resource.Resource {
@@ -116,7 +116,7 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The configuration of MQTT for a device registry.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"mqtt_config": schema.StringAttribute{
+					"mqtt_enabled_state": schema.StringAttribute{
 						MarkdownDescription: "If enabled, allows connections using the MQTT protocol. Otherwise, MQTT connections to this registry will fail.",
 						Optional:            true,
 					},
@@ -126,7 +126,7 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The configuration of the HTTP bridge for a device registry.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"http_config": schema.StringAttribute{
+					"http_enabled_state": schema.StringAttribute{
 						MarkdownDescription: "If enabled, allows devices to use DeviceService via the HTTP protocol. Otherwise, any requests to DeviceService will fail for this registry.",
 						Optional:            true,
 					},
@@ -195,11 +195,11 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	}
 
 	mqttConfig := &iot.MqttConfig{
-		MqttEnabledState: plan.MqttConfig.MqttConfig.ValueString(),
+		MqttEnabledState: plan.MqttConfig.MqttEnabledState.ValueString(),
 	}
 
 	httpConfig := &iot.HttpConfig{
-		HttpEnabledState: plan.HttpConfig.HttpConfig.ValueString(),
+		HttpEnabledState: plan.HttpConfig.HttpEnabledState.ValueString(),
 	}
 
 	createRequestPayload := iot.DeviceRegistry{
