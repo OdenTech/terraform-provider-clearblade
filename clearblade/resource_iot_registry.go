@@ -37,8 +37,9 @@ type deviceRegistryResourceModel struct {
 	MqttConfig               *mqttConfigModel                `tfsdk:"mqtt_config"`
 	HttpConfig               *httpConfigModel                `tfsdk:"http_config"`
 	LogLevel                 types.String                    `tfsdk:"log_level"`
-	Region                   types.String                    `tfsdk:"region"`
-	Project                  types.String                    `tfsdk:"project"`
+	Credentials              []credentialsModel              `tfsdk:"credentials"`
+	// Region                   types.String                    `tfsdk:"region"`
+	// Project                  types.String                    `tfsdk:"project"`
 	//LastUpdated              types.String                    `tfsdk:"last_updated"`
 }
 
@@ -136,14 +137,14 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The default logging verbosity for activity from devices in this registry. The verbosity level can be overridden by Device.log_level.",
 				Required:            true,
 			},
-			"project": schema.StringAttribute{
-				MarkdownDescription: "The id of the project.",
-				Optional:            true,
-			},
-			"region": schema.StringAttribute{
-				MarkdownDescription: "The name of the cloud region.",
-				Optional:            true,
-			},
+			// "project": schema.StringAttribute{
+			// 	MarkdownDescription: "The id of the project.",
+			// 	Optional:            true,
+			// },
+			// "region": schema.StringAttribute{
+			// 	MarkdownDescription: "The name of the cloud region.",
+			// 	Optional:            true,
+			// },
 			// "last_updated": schema.StringAttribute{
 			// 	Optional: true,
 			// },
