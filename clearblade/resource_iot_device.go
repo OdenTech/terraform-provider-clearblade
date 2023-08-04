@@ -45,10 +45,6 @@ type deviceResourceModel struct {
 	Metadata           types.String             `tfsdk:"metadata"`
 	GatewayConfig      *gatewayConfigModel      `tfsdk:"gateway_config"`
 	Registry           types.String             `tfsdk:"id"`
-	//Device *deviceModel `tfsdk:"device"`
-	// Project     types.String `tfsdk:"project"`
-	// Region      types.String `tfsdk:"region"`
-	// LastUpdated types.String `tfsdk:"last_updated"`
 }
 
 type deviceCredentialsModel struct {
@@ -91,10 +87,6 @@ type gatewayConfigModel struct {
 	LastAccessedGatewayID   types.String `tfsdk:"last_accessed_gateway_id"`
 	LastAccessedGatewayTime types.String `tfsdk:"last_accessed_gateway_time"`
 }
-
-// type deviceModel struct {
-// 	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
-// }
 
 func NewDeviceResource() resource.Resource {
 	return &deviceResource{}
