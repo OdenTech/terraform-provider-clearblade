@@ -25,16 +25,16 @@ type deviceRegistriesDataSourceModel struct {
 }
 
 // deviceRegistriesModel maps deviceRegistry schema data.
-// type deviceRegistriesModel struct {
-// 	ID                       types.String                    `tfsdk:"id"`
-// 	Name                     types.String                    `tfsdk:"name"`
-// 	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
-// 	StateNotificationConfig  stateNotificationConfigModel    `tfsdk:"state_notification_config"`
-// 	HttpConfig               httpConfigModel                 `tfsdk:"http_config"`
-// 	MqttConfig               mqttConfigModel                 `tfsdk:"mqtt_config"`
-// 	LogLevel                 types.String                    `tfsdk:"log_level"`
-// 	Credentials              []credentialsModel              `tfsdk:"credentials"`
-// }
+type deviceRegistriesModel struct {
+	ID                       types.String                    `tfsdk:"id"`
+	Name                     types.String                    `tfsdk:"name"`
+	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
+	StateNotificationConfig  stateNotificationConfigModel    `tfsdk:"state_notification_config"`
+	HttpConfig               httpConfigModel                 `tfsdk:"http_config"`
+	MqttConfig               mqttConfigModel                 `tfsdk:"mqtt_config"`
+	LogLevel                 types.String                    `tfsdk:"log_level"`
+	Credentials              []credentialsModel              `tfsdk:"credentials"`
+}
 
 func NewDeviceRegistriesDataSource() datasource.DataSource {
 	return &deviceRegistriesDataSource{}
