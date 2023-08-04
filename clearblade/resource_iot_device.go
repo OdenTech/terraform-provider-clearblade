@@ -92,9 +92,9 @@ type gatewayConfigModel struct {
 	LastAccessedGatewayTime types.String `tfsdk:"last_accessed_gateway_time"`
 }
 
-type deviceModel struct {
-	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
-}
+// type deviceModel struct {
+// 	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
+// }
 
 func NewDeviceResource() resource.Resource {
 	return &deviceResource{}
