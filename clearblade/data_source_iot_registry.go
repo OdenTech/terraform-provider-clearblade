@@ -299,14 +299,20 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
 					X509Details: x509DetailsModel{
-						X509CertificateDetail: x509CertificateDetailModel{
-							Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-							Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-							StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-							ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-							SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-							PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-						},
+						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+						// X509CertificateDetail: x509CertificateDetailModel{
+						// 	Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+						// 	Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+						// 	StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+						// 	ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+						// 	SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+						// 	PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+						// },
 					},
 				},
 			})
