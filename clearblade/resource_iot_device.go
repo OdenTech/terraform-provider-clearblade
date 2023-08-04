@@ -27,23 +27,73 @@ var (
 )
 
 type deviceResourceModel struct {
-	ID    types.String `tfsdk:"id"`
-	Name  types.String `tfsdk:"name"`
-	NumID types.String `tfsdk:"num_id"`
-	//Credentials
+	ID                 types.String             `tfsdk:"id"`
+	Name               types.String             `tfsdk:"name"`
+	NumID              types.String             `tfsdk:"num_id"`
+	Credentials        []deviceCredentialsModel `tfsdk:"credentials"`
+	LastHeartbeatTime  types.String             `tfsdk:"last_heartbeat_time"`
+	LastEventTime      types.String             `tfsdk:"last_event_time"`
+	LastStateTime      types.String             `tfsdk:"last_state_time"`
+	LastConfigAckTime  types.String             `tfsdk:"last_config_ack_time"`
+	LastConfigSendTime types.String             `tfsdk:"last_config_send_time"`
+	blocked            types.Bool               `tfsdk:"blocked"`
+	LastErrorTime      types.String             `tfsdk:"last_error_time"`
+	LastErrorStatus    *lastErrorStatusModel    `tfsdk:"last_error_status"`
+	Config             *configModel             `tfsdk:"config"`
+	State              *stateModel              `tfsdk:"state"`
+	LogLevel           types.String             `tfsdk:"log_level"`
+	Metadata           types.String             `tfsdk:"metadata"`
+	GatewayConfig      *gatewayConfigModel      `tfsdk:"gateway_config"`
+	Registry           types.String             `tfsdk:"id"`
 	//Device *deviceModel `tfsdk:"device"`
 	// Project     types.String `tfsdk:"project"`
 	// Region      types.String `tfsdk:"region"`
 	// LastUpdated types.String `tfsdk:"last_updated"`
 }
 
-type deviceModel struct {
-	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
+type deviceCredentialsModel struct {
+	PublicKeyCertificate *devicePublicKeyCertificateModel `tfsdk:"public_key_certificate"`
+}
+
+type devicePublicKeyCertificateModel struct {
+	ExpirationTime types.String    `tfsdk:"expiration_time"`
+	PublicKey      *publicKeyModel `tfsdk:"public_key"`
+}
+
+type publicKeyModel struct {
+	format types.String `tfsdk:"format"`
+	Key    types.String `tfsdk:"key"`
+}
+
+type lastErrorStatusModel struct {
+	Code    types.Number   `tfsdk:"code"`
+	Details []detailsModel `tfsdk:"details"`
+	Message types.String   `tfsdk:"message"`
+}
+
+type detailsModel struct{}
+
+type configModel struct {
+	Version         types.String `tfsdk:"version"`
+	CloudUpdateTime types.String `tfsdk:"cloud_update_time"`
+	DeviceAckTime   types.String `tfsdk:"device_ack_time"`
+	BinaryData      types.String `tfsdk:"binary_data"`
+}
+
+type stateModel struct {
+	UpdateTime types.String `tfsdk:"update_time"`
+	BinaryData types.String `tfsdk:"binary_data"`
 }
 
 type gatewayConfigModel struct {
-	GatewayType       types.String `tfsdk:"gateway_type"`
-	GatewayAuthMethod types.String `tfsdk:"gateway_auth_method"`
+	GatewayType             types.String `tfsdk:"gateway_type"`
+	GatewayAuthMethod       types.String `tfsdk:"gateway_auth_method"`
+	LastAccessedGatewayID   types.String `tfsdk:"last_accessed_gateway_id"`
+	LastAccessedGatewayTime types.String `tfsdk:"last_accessed_gateway_time"`
+}
+
+type deviceModel struct {
+	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
 }
 
 func NewDeviceResource() resource.Resource {
@@ -155,9 +205,9 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 						Description: `A list of messages that carry the error details.`,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"@type": schema.MapAttribute{
-									/* ... */
-								},
+								// "@type": schema.MapAttribute{
+								// 	/* ... */
+								// },
 							},
 						},
 					},
@@ -296,11 +346,11 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	payload := &iot.Device{}
-	payload.Id = plan.Device.ID.ValueString()
-	if plan.Device.GatewayConfig.GatewayType.ValueString() != "" {
+	payload.Id = plan.ID.ValueString()
+	if plan.GatewayConfig.GatewayType.ValueString() != "" {
 		payload.GatewayConfig = &iot.GatewayConfig{
-			GatewayType:       plan.Device.GatewayConfig.GatewayType.ValueString(),
-			GatewayAuthMethod: plan.Device.GatewayConfig.GatewayAuthMethod.ValueString(),
+			GatewayType:       plan.GatewayConfig.GatewayType.ValueString(),
+			GatewayAuthMethod: plan.GatewayConfig.GatewayAuthMethod.ValueString(),
 		}
 	}
 
