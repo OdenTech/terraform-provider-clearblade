@@ -18,9 +18,14 @@ variable "registry_id" {
   default = "registry_id_here"
 }
 
+variable "registry_id_1" {
+  type    = string
+  default = "registry_id_here"
+}
+
 variable "event_subfolder_matches" {
   type    = string
-  default = "test/path"
+  default = "test-path"
 }
 
 variable "event_topic_name" {
