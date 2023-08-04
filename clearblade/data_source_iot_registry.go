@@ -21,64 +21,20 @@ var (
 
 // deviceRegistriesDataSourceModel maps the data source schema data.
 type deviceRegistriesDataSourceModel struct {
-	// Project          types.String            `tfsdk:"project"`
-	// Region           types.String            `tfsdk:"region"`
 	DeviceRegistries []deviceRegistriesModel `tfsdk:"device_registries"`
 }
 
 // deviceRegistriesModel maps deviceRegistry schema data.
 type deviceRegistriesModel struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-	//EventNotificationConfigs []eventNotificationConfigModel `tfsdk:"event_notification_configs"`
+	ID                       types.String                    `tfsdk:"id"`
+	Name                     types.String                    `tfsdk:"name"`
 	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
 	StateNotificationConfig  stateNotificationConfigModel    `tfsdk:"state_notification_config"`
-	//HttpConfig               httpConfigModell               `tfsdk:"http_config"`
-	HttpConfig httpConfigModel `tfsdk:"http_config"`
-	//MqttConfig               mqttConfigModell               `tfsdk:"mqtt_config"`
-	MqttConfig  mqttConfigModel    `tfsdk:"mqtt_config"`
-	LogLevel    types.String       `tfsdk:"log_level"`
-	Credentials []credentialsModel `tfsdk:"credentials"`
+	HttpConfig               httpConfigModel                 `tfsdk:"http_config"`
+	MqttConfig               mqttConfigModel                 `tfsdk:"mqtt_config"`
+	LogLevel                 types.String                    `tfsdk:"log_level"`
+	Credentials              []credentialsModel              `tfsdk:"credentials"`
 }
-
-// type eventNotificationConfigModel struct {
-// 	SubfolderMatches types.String `tfsdk:"subfolder_matches"`
-// 	PubsubTopicName  types.String `tfsdk:"pubsub_topic_name"`
-// }
-
-// type stateNotificationConfigModell struct {
-// 	PubsubTopicName types.String `tfsdk:"pubsub_topic_name"`
-// }
-
-//	type httpConfigModell struct {
-//		HttpEnabledState types.String `tfsdk:"http_enabled_state"`
-//	}
-//
-//	type mqttConfigModell struct {
-//		MqttEnabledState types.String `tfsdk:"mqtt_enabled_state"`
-//	}
-// type credentialsModel struct {
-// 	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
-// }
-
-// type publicKeyCertificateModel struct {
-// 	Format      types.String     `tfsdk:"format"`
-// 	Certificate types.String     `tfsdk:"certificate"`
-// 	X509Details x509DetailsModel `tfsdk:"x509_details"`
-// }
-
-// type x509DetailsModel struct {
-// 	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
-// }
-
-// type x509CertificateDetailModel struct {
-// 	Issuer             types.String `tfsdk:"issuer"`
-// 	Subject            types.String `tfsdk:"subject"`
-// 	StartTime          types.String `tfsdk:"start_time"`
-// 	ExpiryTime         types.String `tfsdk:"expiry_time"`
-// 	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
-// 	PublicKeyType      types.String `tfsdk:"public_key_type"`
-// }
 
 func NewDeviceRegistriesDataSource() datasource.DataSource {
 	return &deviceRegistriesDataSource{}
@@ -105,14 +61,6 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 	resp.Schema = schema.Schema{
 		Description: "List of device registries in a project.",
 		Attributes: map[string]schema.Attribute{
-			// "project": schema.StringAttribute{
-			// 	Required:    true,
-			// 	Description: "The name of the project to list device registries for.",
-			// },
-			// "region": schema.StringAttribute{
-			// 	Required:    true,
-			// 	Description: "The name of the region to list device registries for.",
-			// },
 			"device_registries": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -126,10 +74,6 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 						"event_notification_configs": schema.ListNestedAttribute{
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
-								// Attributes: map[string]schema.Attribute{
-								// 	"event_notification_config": schema.SingleNestedAttribute{
-								// 		Required:    true,
-								// 		Description: "The configuration for forwarding telemetry events.",
 								Attributes: map[string]schema.Attribute{
 									"subfolder_matches": schema.StringAttribute{
 										Description: "This field is used only for telemetry events; subfolders are not supported for state changes.",
@@ -140,8 +84,6 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 										Computed:    true,
 									},
 								},
-								//}, //
-								//}, //
 							},
 						},
 						"state_notification_config": schema.SingleNestedAttribute{
@@ -181,10 +123,6 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 						"credentials": schema.ListNestedAttribute{
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
-								// Attributes: map[string]schema.Attribute{
-								// 	"credential": schema.SingleNestedAttribute{
-								// 		Required:    true,
-								// 		Description: "A server-stored registry credential used to validate device credentials.",
 								Attributes: map[string]schema.Attribute{
 									"public_key_certificate": schema.SingleNestedAttribute{
 										Optional:    true,
@@ -198,48 +136,39 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 												Description: "The certificate data.",
 												Computed:    true,
 											},
-											//
 											"x509_details": schema.SingleNestedAttribute{
 												Optional:    true,
 												Description: "Details of an X.509 certificate.",
 												Attributes: map[string]schema.Attribute{
-													"x509_certificate_detail": schema.SingleNestedAttribute{
-														Optional:    true,
-														Description: "The certificate details. Used only for X.509 certificates.",
-														Attributes: map[string]schema.Attribute{
-															"issuer": schema.StringAttribute{
-																Description: "The entity that signed the certificate.",
-																Computed:    true,
-															},
-															"subject": schema.StringAttribute{
-																Description: "The entity the certificate and public key belong to.",
-																Computed:    true,
-															},
-															"start_time": schema.StringAttribute{
-																Description: "The time the certificate becomes valid.",
-																Computed:    true,
-															},
-															"expiry_time": schema.StringAttribute{
-																Description: "The time the certificate becomes invalid.",
-																Computed:    true,
-															},
-															"signature_algorithm": schema.StringAttribute{
-																Description: "The algorithm used to sign the certificate.",
-																Computed:    true,
-															},
-															"public_key_type": schema.StringAttribute{
-																Description: "The type of public key in the certificate.",
-																Computed:    true,
-															},
-														},
+													"issuer": schema.StringAttribute{
+														Description: "The entity that signed the certificate.",
+														Computed:    true,
+													},
+													"subject": schema.StringAttribute{
+														Description: "The entity the certificate and public key belong to.",
+														Computed:    true,
+													},
+													"start_time": schema.StringAttribute{
+														Description: "The time the certificate becomes valid.",
+														Computed:    true,
+													},
+													"expiry_time": schema.StringAttribute{
+														Description: "The time the certificate becomes invalid.",
+														Computed:    true,
+													},
+													"signature_algorithm": schema.StringAttribute{
+														Description: "The algorithm used to sign the certificate.",
+														Computed:    true,
+													},
+													"public_key_type": schema.StringAttribute{
+														Description: "The type of public key in the certificate.",
+														Computed:    true,
 													},
 												},
-											}, //
+											},
 										},
 									},
 								},
-								//}, //
-								//},//
 							},
 						},
 					},
@@ -253,14 +182,6 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	var state deviceRegistriesDataSourceModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
-
-	// if state.Project.ValueString() != "" {
-	// 	tflog.SetField(ctx, "project", state.Project.ValueString())
-	// }
-
-	// if state.Region.ValueString() != "" {
-	// 	tflog.SetField(ctx, "region", state.Region.ValueString())
-	// }
 
 	tflog.Info(ctx, "requesting device registry listing from Clearblade IoT Core")
 	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"))
@@ -305,14 +226,6 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
 						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
 						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-						// X509CertificateDetail: x509CertificateDetailModel{
-						// 	Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						// 	Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						// 	StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						// 	ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						// 	SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						// 	PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-						// },
 					},
 				},
 			})
