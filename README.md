@@ -25,14 +25,16 @@ terraform {
   required_providers {
     clearblade = {
       source = "ClearBlade/clearblade"
-      version = "0.1.0"
+      version = "x.y.z" # check out the latest version in the release section
     }
   }
 }
 
 provider "clearblade" {
   # Configuration options
-  credentials = var.clearblade-creds
+  credentials = "path-to-clearblade-credentials-auth-file"
+  project     = "your-gcp-project-id"
+  region      = "your-gcp-region"
 }
 ```
 
