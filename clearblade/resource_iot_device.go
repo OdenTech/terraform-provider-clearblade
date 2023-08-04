@@ -3,33 +3,41 @@ package clearblade
 import (
 	"context"
 	"fmt"
-	"time"
+	"os"
+
+	//"time"
 
 	"github.com/clearblade/go-iot"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &deviceResource{}
-	_ resource.ResourceWithConfigure = &deviceResource{}
-	//_ resource.ResourceWithImportState = &deviceResource{}
+	_ resource.Resource                = &deviceResource{}
+	_ resource.ResourceWithConfigure   = &deviceResource{}
+	_ resource.ResourceWithImportState = &deviceResource{}
 )
 
 type deviceResourceModel struct {
-	Registry    types.String `tfsdk:"registry"`
-	Project     types.String `tfsdk:"project"`
-	Region      types.String `tfsdk:"region"`
-	LastUpdated types.String `tfsdk:"last_updated"`
-	Device      *deviceModel `tfsdk:"device"`
+	ID    types.String `tfsdk:"id"`
+	Name  types.String `tfsdk:"name"`
+	NumID types.String `tfsdk:"num_id"`
+	//Credentials
+	//Device *deviceModel `tfsdk:"device"`
+	// Project     types.String `tfsdk:"project"`
+	// Region      types.String `tfsdk:"region"`
+	// LastUpdated types.String `tfsdk:"last_updated"`
 }
 
 type deviceModel struct {
-	ID types.String `tfsdk:"id"`
-	//Name          types.String        `tfsdk:"name"`
 	GatewayConfig *gatewayConfigModel `tfsdk:"gateway_config"`
 }
 
@@ -56,44 +64,202 @@ func (r *deviceResource) Metadata(_ context.Context, req resource.MetadataReques
 func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"registry": schema.StringAttribute{
-				MarkdownDescription: "The name of the device registry where this device should be created.",
-				Required:            true,
+			"id": schema.StringAttribute{
+				Description: "The user-defined device identifier. The device ID must be unique within a device registry.",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
-			"project": schema.StringAttribute{
-				MarkdownDescription: "The id of the project.",
-				Required:            true,
+			"name": schema.StringAttribute{
+				Description: "The resource path name. For example, projects/p1/locations/us-central1/registries/registry0/devices/dev0 or projects/p1/locations/us-central1/registries/registry0/devices/{numId}.",
+				Optional:    true,
 			},
-			"region": schema.StringAttribute{
-				MarkdownDescription: "The name of the cloud region.",
-				Required:            true,
+			"num_id": schema.StringAttribute{
+				Description: "A server-defined unique numeric ID for the device. This is a more compact way to identify devices, and it is globally unique.",
+				Computed:    true,
 			},
-			"last_updated": schema.StringAttribute{
-				Computed: true,
-			},
-			"device": schema.SingleNestedAttribute{
-				MarkdownDescription: "A unique resource.",
-				Required:            true,
-				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						MarkdownDescription: "A unique name for the device resource.",
-						Required:            true,
-					},
-					"gateway_config": schema.SingleNestedAttribute{
-						MarkdownDescription: "Gateway-related configuration and state.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"gateway_type": schema.StringAttribute{
-								MarkdownDescription: "Indicates whether the device is a gateway.",
-								Optional:            true,
-							},
-							"gateway_auth_method": schema.StringAttribute{
-								MarkdownDescription: "Indicates how to authorize and/or authenticate devices to access the gateway.",
-								Optional:            true,
+			"credentials": schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "The credentials used to authenticate this device.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"expiration_time": schema.StringAttribute{
+							Computed:    true,
+							Optional:    true,
+							Description: "The time at which this credential becomes invalid.",
+						},
+						"public_key": schema.SingleNestedAttribute{
+							Required:            true,
+							MarkdownDescription: "A public key used to verify the signature of JSON Web Tokens (JWTs).",
+							Attributes: map[string]schema.Attribute{
+								"format": schema.StringAttribute{
+									Required: true,
+									Validators: []validator.String{
+										stringvalidator.OneOf(
+											"RSA_PEM",
+											"RSA_X509_PEM",
+											"ES256_PEM",
+											"ES256_X509_PEM",
+										),
+									},
+									Description: `The format of the key. Possible values: ["RSA_PEM", "RSA_X509_PEM", "ES256_PEM", "ES256_X509_PEM"]`,
+								},
+								"key": schema.StringAttribute{
+									Required:    true,
+									Description: "The key data.",
+								},
 							},
 						},
 					},
 				},
+			},
+			"last_heartbeat_time": schema.StringAttribute{
+				MarkdownDescription: "The last time an MQTT PINGREQ was received.",
+				Computed:            true,
+			},
+			"last_event_time": schema.StringAttribute{
+				Description: "The last time a telemetry event was received.",
+				Computed:    true,
+			},
+			"last_state_time": schema.StringAttribute{
+				MarkdownDescription: "The last time a state event was received.",
+				Computed:            true,
+			},
+			"last_config_ack_time": schema.StringAttribute{
+				Description: "The last time a cloud-to-device config version acknowledgment was received from the device.",
+				Computed:    true,
+			},
+			"last_config_send_time": schema.StringAttribute{
+				Description: "The last time a cloud-to-device config version was sent to the device.",
+				Computed:    true,
+			},
+			"blocked": schema.BoolAttribute{
+				Description: "If a device is blocked, connections or requests from this device will fail.",
+				Optional:    true,
+			},
+			"last_error_time": schema.StringAttribute{
+				Description: "The time the most recent error occurred, such as a failure to publish to Cloud Pub/Sub.",
+				Computed:    true,
+			},
+			"last_error_status": schema.SingleNestedAttribute{
+				Description: "The error message of the most recent error, such as a failure to publish to Cloud Pub/Sub.",
+				Computed:    true,
+				Attributes: map[string]schema.Attribute{
+					"code": schema.NumberAttribute{
+						Optional:    true,
+						Description: `The status code, which should be an enum value of google.rpc.Code.`,
+					},
+					"details": schema.ListNestedAttribute{
+						Optional:    true,
+						Description: `A list of messages that carry the error details.`,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"@type": schema.MapAttribute{
+									/* ... */
+								},
+							},
+						},
+					},
+					"message": schema.StringAttribute{
+						Optional:    true,
+						Description: `A developer-facing error message, which should be in English.`,
+					},
+				},
+			},
+			"config": schema.SingleNestedAttribute{
+				Computed:    true,
+				Description: "The most recent device configuration, which is eventually sent from Cloud IoT Core to the device.",
+				Attributes: map[string]schema.Attribute{
+					"version": schema.StringAttribute{
+						Computed:    true,
+						Description: `The version of this update.`,
+					},
+					"cloud_update_time": schema.StringAttribute{
+						Computed:    true,
+						Description: `The time at which this configuration version was updated in Cloud IoT Core.`,
+					},
+					"device_ack_time": schema.StringAttribute{
+						Computed:    true,
+						Description: `The time at which Cloud IoT Core received the acknowledgment from the device, indicating that the device has received this configuration version.`,
+					},
+					"binary_data": schema.StringAttribute{
+						Optional:    true,
+						Description: `The device configuration data.`,
+					},
+				},
+			},
+			"state": schema.SingleNestedAttribute{
+				Computed:    true,
+				Description: "The state most recently received from the device.",
+				Attributes: map[string]schema.Attribute{
+					"update_time": schema.StringAttribute{
+						Optional:    true,
+						Description: `The time at which this state version was updated in Cloud IoT Core.`,
+					},
+					"binary_data": schema.StringAttribute{
+						Optional:    true,
+						Description: `The device state data.`,
+					},
+				},
+			},
+			"log_level": schema.StringAttribute{
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(
+						"NONE",
+						"ERROR",
+						"INFO",
+						"DEBUG",
+						"",
+					),
+				},
+				Description: `The logging verbosity for device activity. Possible values: ["NONE", "ERROR", "INFO", "DEBUG"]`,
+			},
+			"metadata": schema.SingleNestedAttribute{
+				Optional:    true,
+				Description: `The metadata key-value pairs assigned to the device.`,
+				Attributes:  map[string]schema.Attribute{},
+			},
+			"gateway_config": schema.SingleNestedAttribute{
+				Optional:    true,
+				Description: `Gateway-related configuration and state.`,
+				Attributes: map[string]schema.Attribute{
+					"gateway_type": schema.StringAttribute{
+						Optional: true,
+						Validators: []validator.String{
+							stringvalidator.OneOf(
+								"GATEWAY",
+								"NON_GATEWAY",
+								"",
+							),
+						},
+						Description: `Indicates whether the device is a gateway. Default value: "NON_GATEWAY" Possible values: ["GATEWAY", "NON_GATEWAY"]`,
+					},
+					"gateway_auth_method": schema.StringAttribute{
+						Optional: true,
+						Validators: []validator.String{
+							stringvalidator.OneOf(
+								"ASSOCIATION_ONLY",
+								"DEVICE_AUTH_TOKEN_ONLY",
+								"ASSOCIATION_AND_DEVICE_AUTH_TOKEN",
+							),
+						},
+						Description: `Indicates whether the device is a gateway. Possible values: ["ASSOCIATION_ONLY", "DEVICE_AUTH_TOKEN_ONLY", "ASSOCIATION_AND_DEVICE_AUTH_TOKEN"]`,
+					},
+					"last_accessed_gateway_id": schema.StringAttribute{
+						Computed:    true,
+						Description: `The ID of the gateway the device accessed most recently.`,
+					},
+					"last_accessed_gateway_time": schema.StringAttribute{
+						Computed:    true,
+						Description: `The most recent time at which the device accessed the gateway specified in last_accessed_gateway.`,
+					},
+				},
+			},
+			"registry": schema.StringAttribute{
+				Description: "The name of the device registry where this device should be created.",
+				Required:    true,
 			},
 		},
 	}
@@ -138,7 +304,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 	}
 
-	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", plan.Project.ValueString(), plan.Region.ValueString(), plan.Registry.ValueString())
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.Registry.ValueString())
 
 	// Create new device
 	_, err := r.client.Projects.Locations.Registries.Devices.Create(parent, payload).Do()
@@ -151,7 +317,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 	tflog.Debug(ctx, "Created a device")
 
-	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+	//plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -173,4 +339,9 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+}
+
+func (r *deviceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

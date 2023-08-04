@@ -169,7 +169,8 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Required:            true,
 			},
 			"credentials": schema.ListNestedAttribute{
-				Optional: true,
+				MarkdownDescription: "List of public key certificates to authenticate devices.",
+				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					// Attributes: map[string]schema.Attribute{
 					// 	"credential": schema.SingleNestedAttribute{
@@ -193,37 +194,69 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Optional:    true,
 									Description: "Details of an X.509 certificate.",
 									Attributes: map[string]schema.Attribute{
-										"x509_certificate_detail": schema.SingleNestedAttribute{
+										// "x509_certificate_detail": schema.SingleNestedAttribute{
+										// 	Optional:    true,
+										// 	Description: "The certificate details. Used only for X.509 certificates.",
+										// 	Attributes: map[string]schema.Attribute{
+										"issuer": schema.StringAttribute{
+											Description: "The entity that signed the certificate.",
 											Optional:    true,
-											Description: "The certificate details. Used only for X.509 certificates.",
-											Attributes: map[string]schema.Attribute{
-												"issuer": schema.StringAttribute{
-													Description: "The entity that signed the certificate.",
-													Optional:    true,
-												},
-												"subject": schema.StringAttribute{
-													Description: "The entity the certificate and public key belong to.",
-													Optional:    true,
-												},
-												"start_time": schema.StringAttribute{
-													Description: "The time the certificate becomes valid.",
-													Optional:    true,
-												},
-												"expiry_time": schema.StringAttribute{
-													Description: "The time the certificate becomes invalid.",
-													Optional:    true,
-												},
-												"signature_algorithm": schema.StringAttribute{
-													Description: "The algorithm used to sign the certificate.",
-													Optional:    true,
-												},
-												"public_key_type": schema.StringAttribute{
-													Description: "The type of public key in the certificate.",
-													Optional:    true,
-												},
-											},
 										},
+										"subject": schema.StringAttribute{
+											Description: "The entity the certificate and public key belong to.",
+											Optional:    true,
+										},
+										"start_time": schema.StringAttribute{
+											Description: "The time the certificate becomes valid.",
+											Optional:    true,
+										},
+										"expiry_time": schema.StringAttribute{
+											Description: "The time the certificate becomes invalid.",
+											Optional:    true,
+										},
+										"signature_algorithm": schema.StringAttribute{
+											Description: "The algorithm used to sign the certificate.",
+											Optional:    true,
+										},
+										"public_key_type": schema.StringAttribute{
+											Description: "The type of public key in the certificate.",
+											Optional:    true,
+										},
+										//}, //
+										//}, //
 									},
+									// Attributes: map[string]schema.Attribute{
+									// 	"x509_certificate_detail": schema.SingleNestedAttribute{
+									// 		Optional:    true,
+									// 		Description: "The certificate details. Used only for X.509 certificates.",
+									// 		Attributes: map[string]schema.Attribute{
+									// 			"issuer": schema.StringAttribute{
+									// 				Description: "The entity that signed the certificate.",
+									// 				Optional:    true,
+									// 			},
+									// 			"subject": schema.StringAttribute{
+									// 				Description: "The entity the certificate and public key belong to.",
+									// 				Optional:    true,
+									// 			},
+									// 			"start_time": schema.StringAttribute{
+									// 				Description: "The time the certificate becomes valid.",
+									// 				Optional:    true,
+									// 			},
+									// 			"expiry_time": schema.StringAttribute{
+									// 				Description: "The time the certificate becomes invalid.",
+									// 				Optional:    true,
+									// 			},
+									// 			"signature_algorithm": schema.StringAttribute{
+									// 				Description: "The algorithm used to sign the certificate.",
+									// 				Optional:    true,
+									// 			},
+									// 			"public_key_type": schema.StringAttribute{
+									// 				Description: "The type of public key in the certificate.",
+									// 				Optional:    true,
+									// 			},
+									// 		},
+									// 	},
+									// },
 								}, //
 							},
 						},
