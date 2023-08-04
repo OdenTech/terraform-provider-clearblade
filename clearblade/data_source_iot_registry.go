@@ -276,58 +276,6 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	tflog.Info(ctx, "device registry")
 	tflog.Info(ctx, strconv.Itoa(len(device_registries.DeviceRegistries)))
 
-	/*
-		LIST
-			{
-				"credentials": null,
-				"event_notification_configs": null,
-				"http_config": {
-				  "http_enabled_state": null
-				},
-				"id": "test-registry-tfo-100",
-				"log_level": "INFO",
-				"mqtt_config": {
-				  "mqtt_enabled_state": null
-				},
-				"name": "projects/api-project-320446546234/locations/us-central1/registries/test-registry-tfo-100",
-				"state_notification_config": {
-				  "pubsub_topic_name": null
-				}
-			  }
-	*/
-
-	/*
-		CREATE
-		{
-			"event_notification_configs": [
-			  {
-				"pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent",
-				"subfolder_matches": "test/path"
-			  },
-			  {
-				"pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent",
-				"subfolder_matches": ""
-			  }
-			],
-			"http_config": {
-			  "http_config": "HTTP_DISABLED"
-			},
-			"id": "test-registry-tfo-101",
-			"last_updated": null,
-			"log_level": "INFO",
-			"mqtt_config": {
-			  "mqtt_config": "MQTT_ENABLED"
-			},
-			"name": null,
-			"project": null,
-			"region": null,
-			"state_notification_config": {
-			  "pubsub_topic_name": "projects/api-project-320446546234/topics/rootevent"
-			}
-		  }
-
-	*/
-
 	// Map response body to model
 	for _, device_registry := range device_registries.DeviceRegistries {
 		registryState := deviceRegistriesModel{
