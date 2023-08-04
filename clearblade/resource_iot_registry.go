@@ -73,10 +73,6 @@ type publicKeyCertificateModel struct {
 }
 
 type x509DetailsModel struct {
-	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
-}
-
-type x509CertificateDetailModel struct {
 	Issuer             types.String `tfsdk:"issuer"`
 	Subject            types.String `tfsdk:"subject"`
 	StartTime          types.String `tfsdk:"start_time"`
@@ -84,6 +80,19 @@ type x509CertificateDetailModel struct {
 	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
 	PublicKeyType      types.String `tfsdk:"public_key_type"`
 }
+
+// type x509DetailsModel struct {
+// 	X509CertificateDetail x509CertificateDetailModel `tfsdk:"x509_certificate_detail"`
+// }
+
+// type x509CertificateDetailModel struct {
+// 	Issuer             types.String `tfsdk:"issuer"`
+// 	Subject            types.String `tfsdk:"subject"`
+// 	StartTime          types.String `tfsdk:"start_time"`
+// 	ExpiryTime         types.String `tfsdk:"expiry_time"`
+// 	SignatureAlgorithm types.String `tfsdk:"signature_algorithm"`
+// 	PublicKeyType      types.String `tfsdk:"public_key_type"`
+// }
 
 func NewDeviceRegistryResource() resource.Resource {
 	return &deviceRegistryResource{}
@@ -315,12 +324,18 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 				Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
 				Format:      v.PublicKeyCertificate.Format.ValueString(),
 				X509Details: &iot.X509CertificateDetails{
-					ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
-					Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
-					PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
-					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
-					StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
-					Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
+					ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
+					Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
+					PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
+					StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
+					Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
+					// ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
+					// Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
+					// PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
+					// SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
+					// StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
+					// Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
 				},
 			},
 		})
@@ -438,14 +453,20 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 				Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 				Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
 				X509Details: x509DetailsModel{
-					X509CertificateDetail: x509CertificateDetailModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
+					Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+					Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+					StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+					// X509CertificateDetail: x509CertificateDetailModel{
+					// 	Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+					// 	Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+					// 	StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+					// 	ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+					// 	SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+					// 	PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+					// },
 				},
 			},
 		})
@@ -514,12 +535,18 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 				Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
 				Format:      v.PublicKeyCertificate.Format.ValueString(),
 				X509Details: &iot.X509CertificateDetails{
-					ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
-					Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
-					PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
-					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
-					StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
-					Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
+					ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
+					Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
+					PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
+					StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
+					Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
+					// ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
+					// Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
+					// PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
+					// SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
+					// StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
+					// Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
 				},
 			},
 		})
@@ -586,14 +613,20 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 				Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 				Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
 				X509Details: x509DetailsModel{
-					X509CertificateDetail: x509CertificateDetailModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
+					Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+					Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+					StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+					// X509CertificateDetail: x509CertificateDetailModel{
+					// 	Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+					// 	Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+					// 	StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+					// 	ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+					// 	SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+					// 	PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+					// },
 				},
 			},
 		})

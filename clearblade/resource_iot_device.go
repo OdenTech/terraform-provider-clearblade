@@ -30,7 +30,7 @@ type deviceResourceModel struct {
 	ID    types.String `tfsdk:"id"`
 	Name  types.String `tfsdk:"name"`
 	NumID types.String `tfsdk:"num_id"`
-	//Credentials
+	Credentials
 	//Device *deviceModel `tfsdk:"device"`
 	// Project     types.String `tfsdk:"project"`
 	// Region      types.String `tfsdk:"region"`
