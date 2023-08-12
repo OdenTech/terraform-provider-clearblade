@@ -36,7 +36,7 @@ type deviceResourceModel struct {
 	LastStateTime      types.String             `tfsdk:"last_state_time"`
 	LastConfigAckTime  types.String             `tfsdk:"last_config_ack_time"`
 	LastConfigSendTime types.String             `tfsdk:"last_config_send_time"`
-	blocked            types.Bool               `tfsdk:"blocked"`
+	Blocked            types.Bool               `tfsdk:"blocked"`
 	LastErrorTime      types.String             `tfsdk:"last_error_time"`
 	LastErrorStatus    *lastErrorStatusModel    `tfsdk:"last_error_status"`
 	Config             *configModel             `tfsdk:"config"`
@@ -57,7 +57,7 @@ type devicePublicKeyCertificateModel struct {
 }
 
 type publicKeyModel struct {
-	format types.String `tfsdk:"format"`
+	Format types.String `tfsdk:"format"`
 	Key    types.String `tfsdk:"key"`
 }
 

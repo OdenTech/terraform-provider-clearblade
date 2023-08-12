@@ -4,14 +4,18 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/clearblade/go-iot"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -33,6 +37,7 @@ type deviceRegistryResourceModel struct {
 */
 
 type deviceRegistryResourceModel struct {
+	Timeouts                 timeouts.Value                  `tfsdk:"timeouts"`
 	ID                       types.String                    `tfsdk:"id"`
 	Name                     types.String                    `tfsdk:"name"`
 	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
@@ -109,9 +114,12 @@ func (r *deviceRegistryResource) Metadata(_ context.Context, req resource.Metada
 }
 
 // Schema defines the schema for the resource.
-func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+			}),
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The identifier of this device registry. For example, myRegistry.",
 				Required:            true,
@@ -155,6 +163,7 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"mqtt_config": schema.SingleNestedAttribute{
 				MarkdownDescription: "The configuration of MQTT for a device registry.",
+				Computed:            true,
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"mqtt_enabled_state": schema.StringAttribute{
@@ -165,6 +174,7 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"http_config": schema.SingleNestedAttribute{
 				MarkdownDescription: "The configuration of the HTTP bridge for a device registry.",
+				Computed:            true,
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"http_enabled_state": schema.StringAttribute{
@@ -175,11 +185,21 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"log_level": schema.StringAttribute{
 				MarkdownDescription: "The default logging verbosity for activity from devices in this registry. The verbosity level can be overridden by Device.log_level.",
-				Required:            true,
+				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(
+						"NONE",
+						"ERROR",
+						"INFO",
+						"DEBUG",
+						"",
+					),
+				},
 			},
 			"credentials": schema.ListNestedAttribute{
 				MarkdownDescription: "List of public key certificates to authenticate devices.",
 				Optional:            true,
+				//Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					// Attributes: map[string]schema.Attribute{
 					// 	"credential": schema.SingleNestedAttribute{
@@ -187,16 +207,16 @@ func (r *deviceRegistryResource) Schema(_ context.Context, _ resource.SchemaRequ
 					// 		Description: "A server-stored registry credential used to validate device credentials.",
 					Attributes: map[string]schema.Attribute{
 						"public_key_certificate": schema.SingleNestedAttribute{
-							Optional:    true,
+							Required:    true,
 							Description: "A public key certificate format and data.",
 							Attributes: map[string]schema.Attribute{
 								"format": schema.StringAttribute{
 									Description: "The certificate format.",
-									Optional:    true,
+									Required:    true,
 								},
 								"certificate": schema.StringAttribute{
 									Description: "The certificate data.",
-									Optional:    true,
+									Required:    true,
 								},
 								//
 								"x509_details": schema.SingleNestedAttribute{
@@ -308,6 +328,17 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	createTimeout, diags := plan.Timeouts.Create(ctx, 60*time.Minute)
+
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
 	// Generate API request body from plan
 	event_notification_configs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
@@ -330,12 +361,6 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
 					StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
 					Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
-					// ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
-					// Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
-					// PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
-					// SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
-					// StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
-					// Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
 				},
 			},
 		})
@@ -459,14 +484,6 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
 					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
 					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					// X509CertificateDetail: x509CertificateDetailModel{
-					// 	Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-					// 	Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-					// 	StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-					// 	ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-					// 	SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-					// 	PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					// },
 				},
 			},
 		})
@@ -541,12 +558,6 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
 					StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
 					Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
-					// ExpiryTime:         v.PublicKeyCertificate.X509Details.X509CertificateDetail.ExpiryTime.ValueString(),
-					// Issuer:             v.PublicKeyCertificate.X509Details.X509CertificateDetail.Issuer.ValueString(),
-					// PublicKeyType:      v.PublicKeyCertificate.X509Details.X509CertificateDetail.PublicKeyType.ValueString(),
-					// SignatureAlgorithm: v.PublicKeyCertificate.X509Details.X509CertificateDetail.SignatureAlgorithm.ValueString(),
-					// StartTime:          v.PublicKeyCertificate.X509Details.X509CertificateDetail.StartTime.ValueString(),
-					// Subject:            v.PublicKeyCertificate.X509Details.X509CertificateDetail.Subject.ValueString(),
 				},
 			},
 		})
@@ -619,14 +630,6 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
 					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
 					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					// X509CertificateDetail: x509CertificateDetailModel{
-					// 	Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-					// 	Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-					// 	StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-					// 	ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-					// 	SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-					// 	PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					// },
 				},
 			},
 		})
