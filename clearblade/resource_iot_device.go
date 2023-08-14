@@ -26,6 +26,15 @@ var (
 	_ resource.ResourceWithImportState = &deviceResource{}
 )
 
+func NewDeviceResource() resource.Resource {
+	return &deviceResource{}
+}
+
+// deviceResource is the resource implementation.
+type deviceResource struct {
+	client *iot.Service
+}
+
 type deviceResourceModel struct {
 	ID                 types.String             `tfsdk:"id"`
 	Name               types.String             `tfsdk:"name"`
@@ -38,8 +47,8 @@ type deviceResourceModel struct {
 	LastConfigSendTime types.String             `tfsdk:"last_config_send_time"`
 	Blocked            types.Bool               `tfsdk:"blocked"`
 	LastErrorTime      types.String             `tfsdk:"last_error_time"`
-	LastErrorStatus    *lastErrorStatusModel    `tfsdk:"last_error_status"`
-	Config             *configModel             `tfsdk:"config"`
+	LastErrorStatus    lastErrorStatusModel     `tfsdk:"last_error_status"`
+	Config             configModel              `tfsdk:"config"`
 	State              *stateModel              `tfsdk:"state"`
 	LogLevel           types.String             `tfsdk:"log_level"`
 	Metadata           types.String             `tfsdk:"metadata"`
@@ -86,20 +95,6 @@ type gatewayConfigModel struct {
 	GatewayAuthMethod       types.String `tfsdk:"gateway_auth_method"`
 	LastAccessedGatewayID   types.String `tfsdk:"last_accessed_gateway_id"`
 	LastAccessedGatewayTime types.String `tfsdk:"last_accessed_gateway_time"`
-}
-
-func NewDeviceResource() resource.Resource {
-	return &deviceResource{}
-}
-
-// deviceResource is the resource implementation.
-type deviceResource struct {
-	client *iot.Service
-}
-
-// Metadata returns the data source type name.
-func (r *deviceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_iot_device"
 }
 
 // Schema defines the schema for the resource.
@@ -386,4 +381,9 @@ func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest,
 func (r *deviceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// Metadata returns the data source type name.
+func (r *deviceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_iot_device"
 }
