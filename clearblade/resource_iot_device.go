@@ -11,6 +11,7 @@ import (
 
 	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -47,13 +48,13 @@ type deviceResourceModel struct {
 	LastConfigSendTime types.String             `tfsdk:"last_config_send_time"`
 	Blocked            types.Bool               `tfsdk:"blocked"`
 	LastErrorTime      types.String             `tfsdk:"last_error_time"`
-	// LastErrorStatus    lastErrorStatusModel     `tfsdk:"last_error_status"`
-	// Config        configModel        `tfsdk:"config"`
-	// State         stateModel         `tfsdk:"state"`
-	// LogLevel types.String `tfsdk:"log_level"`
-	// Metadata types.String `tfsdk:"metadata"`
-	// GatewayConfig gatewayConfigModel `tfsdk:"gateway_config"`
-	Registry types.String `tfsdk:"registry"`
+	LastErrorStatus    types.Object             `tfsdk:"last_error_status"`
+	Config             types.Object             `tfsdk:"config"`
+	State              types.Object             `tfsdk:"state"`
+	LogLevel           types.String             `tfsdk:"log_level"`
+	Metadata           types.Object             `tfsdk:"metadata"`
+	GatewayConfig      types.Object             `tfsdk:"gateway_config"`
+	Registry           types.String             `tfsdk:"registry"`
 }
 
 type deviceCredentialsModel struct {
@@ -70,11 +71,20 @@ type publicKeyModel struct {
 	Key    types.String `tfsdk:"key"`
 }
 
-// type lastErrorStatusModel struct {
-// 	Code types.Int64 `tfsdk:"code"`
-// 	// Details []detailsModel `tfsdk:"details"`
-// 	Message types.String `tfsdk:"message"`
-// }
+type lastErrorStatusModel struct {
+	Code types.Int64 `tfsdk:"code"`
+	// Details []detailsModel `tfsdk:"details"`
+	Message types.String `tfsdk:"message"`
+}
+
+var LastErrorStatusModelTypes = map[string]attr.Type{
+	"code":    types.Int64Type,
+	"message": types.StringType,
+}
+
+type metadataModel struct{}
+
+var MetadataModelTypes = map[string]attr.Type{}
 
 // type detailsModel struct{}
 
@@ -85,9 +95,19 @@ type configModel struct {
 	// BinaryData      types.String `tfsdk:"binary_data"`
 }
 
-type stateModel struct {
+var ConfigModelTypes = map[string]attr.Type{
+	"version":           types.Int64Type,
+	"cloud_update_time": types.StringType,
+}
+
+type StateModel struct {
 	UpdateTime types.String `tfsdk:"update_time"`
 	BinaryData types.String `tfsdk:"binary_data"`
+}
+
+var StateModelTypes = map[string]attr.Type{
+	"update_time": types.StringType,
+	"binary_data": types.StringType,
 }
 
 type gatewayConfigModel struct {
@@ -95,6 +115,13 @@ type gatewayConfigModel struct {
 	GatewayAuthMethod       types.String `tfsdk:"gateway_auth_method"`
 	LastAccessedGatewayID   types.String `tfsdk:"last_accessed_gateway_id"`
 	LastAccessedGatewayTime types.String `tfsdk:"last_accessed_gateway_time"`
+}
+
+var GatewayConfigModelTypes = map[string]attr.Type{
+	"gateway_type":               types.StringType,
+	"gateway_auth_method":        types.StringType,
+	"last_accessed_gateway_id":   types.StringType,
+	"last_accessed_gateway_time": types.StringType,
 }
 
 // Schema defines the schema for the resource.
@@ -178,128 +205,137 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description: "The time the most recent error occurred, such as a failure to publish to Cloud Pub/Sub.",
 				Computed:    true,
 			},
-			// "last_error_status": schema.SingleNestedAttribute{
-			// 	Description: "The error message of the most recent error, such as a failure to publish to Cloud Pub/Sub.",
-			// 	Optional:    true,
-			// 	Computed:    true,
-			// 	Attributes: map[string]schema.Attribute{
-			// 		"code": schema.Int64Attribute{
-			// 			Optional:    true,
-			// 			Computed:    true,
-			// 			Description: `The status code, which should be an enum value of google.rpc.Code.`,
-			// 		},
-			// 		// "details": schema.ListNestedAttribute{
-			// 		// 	Optional:    true,
-			// 		// 	Description: `A list of messages that carry the error details.`,
-			// 		// 	NestedObject: schema.NestedAttributeObject{
-			// 		// 		Attributes: map[string]schema.Attribute{
-			// 		// 			// "@type": schema.MapAttribute{
-			// 		// 			// 	/* ... */
-			// 		// 			// },
-			// 		// 		},
-			// 		// 	},
-			// 		// },
-			// 		"message": schema.StringAttribute{
-			// 			Optional:    true,
-			// 			Computed:    true,
-			// 			Description: `A developer-facing error message, which should be in English.`,
-			// 		},
-			// 	},
-			// },
-			// "config": schema.SingleNestedAttribute{
-			// 	Optional:    true,
-			// 	Computed:    true,
-			// 	Description: "The most recent device configuration, which is eventually sent from Cloud IoT Core to the device.",
-			// 	Attributes: map[string]schema.Attribute{
-			// 		"version": schema.Int64Attribute{
-			// 			Computed:    true,
-			// 			Description: `The version of this update.`,
-			// 		},
-			// 		"cloud_update_time": schema.StringAttribute{
-			// 			Computed:    true,
-			// 			Description: `The time at which this configuration version was updated in Cloud IoT Core.`,
-			// 		},
-			// 		// "device_ack_time": schema.StringAttribute{
-			// 		// 	Computed:    true,
-			// 		// 	Description: `The time at which Cloud IoT Core received the acknowledgment from the device, indicating that the device has received this configuration version.`,
-			// 		// },
-			// 		// "binary_data": schema.StringAttribute{
-			// 		// 	Optional:    true,
-			// 		// 	Description: `The device configuration data.`,
-			// 		// },
-			// 	},
-			// },
-			// "state": schema.SingleNestedAttribute{
-			// 	Computed:    true,
-			// 	Description: "The state most recently received from the device.",
-			// 	Attributes: map[string]schema.Attribute{
-			// 		"update_time": schema.StringAttribute{
-			// 			Optional:    true,
-			// 			Description: `The time at which this state version was updated in Cloud IoT Core.`,
-			// 		},
-			// 		"binary_data": schema.StringAttribute{
-			// 			Optional:    true,
-			// 			Description: `The device state data.`,
-			// 		},
-			// 	},
-			// },
-			// "log_level": schema.StringAttribute{
-			// 	Optional: true,
-			// 	Validators: []validator.String{
-			// 		stringvalidator.OneOf(
-			// 			"NONE",
-			// 			"ERROR",
-			// 			"INFO",
-			// 			"DEBUG",
-			// 			"",
-			// 		),
-			// 	},
-			// 	Description: `The logging verbosity for device activity. Possible values: ["NONE", "ERROR", "INFO", "DEBUG"]`,
-			// },
-			// "metadata": schema.SingleNestedAttribute{
-			// 	Optional:    true,
-			// 	Description: `The metadata key-value pairs assigned to the device.`,
-			// 	Attributes:  map[string]schema.Attribute{},
-			// },
-			// "gateway_config": schema.SingleNestedAttribute{
-			// 	Optional:    true,
-			// 	Computed:    true,
-			// 	Description: `Gateway-related configuration and state.`,
-			// 	Attributes: map[string]schema.Attribute{
-			// 		"gateway_type": schema.StringAttribute{
-			// 			Optional: true,
-			// 			// Computed: true,
-			// 			// Validators: []validator.String{
-			// 			// 	stringvalidator.OneOf(
-			// 			// 		"GATEWAY",
-			// 			// 		"NON_GATEWAY",
-			// 			// 		"",
-			// 			// 	),
-			// 			// },
-			// 			Description: `Indicates whether the device is a gateway. Default value: "NON_GATEWAY" Possible values: ["GATEWAY", "NON_GATEWAY"]`,
-			// 		},
-			// 		"gateway_auth_method": schema.StringAttribute{
-			// 			Optional: true,
-			// 			// Computed: true,
-			// 			// Validators: []validator.String{
-			// 			// 	stringvalidator.OneOf(
-			// 			// 		"ASSOCIATION_ONLY",
-			// 			// 		"DEVICE_AUTH_TOKEN_ONLY",
-			// 			// 		"ASSOCIATION_AND_DEVICE_AUTH_TOKEN",
-			// 			// 	),
-			// 			// },
-			// 			Description: `Indicates whether the device is a gateway. Possible values: ["ASSOCIATION_ONLY", "DEVICE_AUTH_TOKEN_ONLY", "ASSOCIATION_AND_DEVICE_AUTH_TOKEN"]`,
-			// 		},
-			// 		"last_accessed_gateway_id": schema.StringAttribute{
-			// 			Computed:    true,
-			// 			Description: `The ID of the gateway the device accessed most recently.`,
-			// 		},
-			// 		"last_accessed_gateway_time": schema.StringAttribute{
-			// 			Computed:    true,
-			// 			Description: `The most recent time at which the device accessed the gateway specified in last_accessed_gateway.`,
-			// 		},
-			// 	},
-			// },
+			"last_error_status": schema.SingleNestedAttribute{
+				Description: "The error message of the most recent error, such as a failure to publish to Cloud Pub/Sub.",
+				Optional:    true,
+				Computed:    true,
+				Attributes: map[string]schema.Attribute{
+					"code": schema.Int64Attribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The status code, which should be an enum value of google.rpc.Code.`,
+					},
+					// "details": schema.ListNestedAttribute{
+					// 	Optional:    true,
+					// 	Description: `A list of messages that carry the error details.`,
+					// 	NestedObject: schema.NestedAttributeObject{
+					// 		Attributes: map[string]schema.Attribute{
+					// 			// "@type": schema.MapAttribute{
+					// 			// 	/* ... */
+					// 			// },
+					// 		},
+					// 	},
+					// },
+					"message": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `A developer-facing error message, which should be in English.`,
+					},
+				},
+			},
+			"config": schema.SingleNestedAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "The most recent device configuration, which is eventually sent from Cloud IoT Core to the device.",
+				Attributes: map[string]schema.Attribute{
+					"version": schema.Int64Attribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The version of this update.`,
+					},
+					"cloud_update_time": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The time at which this configuration version was updated in Cloud IoT Core.`,
+					},
+					// "device_ack_time": schema.StringAttribute{
+					// 	Computed:    true,
+					// 	Description: `The time at which Cloud IoT Core received the acknowledgment from the device, indicating that the device has received this configuration version.`,
+					// },
+					// "binary_data": schema.StringAttribute{
+					// 	Optional:    true,
+					// 	Description: `The device configuration data.`,
+					// },
+				},
+			},
+			"state": schema.SingleNestedAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "The state most recently received from the device.",
+				Attributes: map[string]schema.Attribute{
+					"update_time": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The time at which this state version was updated in Cloud IoT Core.`,
+					},
+					"binary_data": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The device state data.`,
+					},
+				},
+			},
+			"log_level": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(
+						"NONE",
+						"ERROR",
+						"INFO",
+						"DEBUG",
+						"",
+					),
+				},
+				Description: `The logging verbosity for device activity. Possible values: ["NONE", "ERROR", "INFO", "DEBUG"]`,
+			},
+			"metadata": schema.SingleNestedAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: `The metadata key-value pairs assigned to the device.`,
+				Attributes:  map[string]schema.Attribute{},
+			},
+			"gateway_config": schema.SingleNestedAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: `Gateway-related configuration and state.`,
+				Attributes: map[string]schema.Attribute{
+					"gateway_type": schema.StringAttribute{
+						Optional: true,
+						Computed: true,
+						Validators: []validator.String{
+							stringvalidator.OneOf(
+								"GATEWAY",
+								"NON_GATEWAY",
+								"",
+							),
+						},
+						Description: `Indicates whether the device is a gateway. Default value: "NON_GATEWAY" Possible values: ["GATEWAY", "NON_GATEWAY"]`,
+					},
+					"gateway_auth_method": schema.StringAttribute{
+						Optional: true,
+						Computed: true,
+						Validators: []validator.String{
+							stringvalidator.OneOf(
+								"ASSOCIATION_ONLY",
+								"DEVICE_AUTH_TOKEN_ONLY",
+								"ASSOCIATION_AND_DEVICE_AUTH_TOKEN",
+							),
+						},
+						Description: `Indicates whether the device is a gateway. Possible values: ["ASSOCIATION_ONLY", "DEVICE_AUTH_TOKEN_ONLY", "ASSOCIATION_AND_DEVICE_AUTH_TOKEN"]`,
+					},
+					"last_accessed_gateway_id": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The ID of the gateway the device accessed most recently.`,
+					},
+					"last_accessed_gateway_time": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The most recent time at which the device accessed the gateway specified in last_accessed_gateway.`,
+					},
+				},
+			},
 			"registry": schema.StringAttribute{
 				Description: "The name of the device registry where this device should be created.",
 				Required:    true,
@@ -348,29 +384,73 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Map response body to schema and populate Computed attribute values
 	plan.Name = types.StringValue(device.Name)
 
-	// plan.State = stateModel{
-	// 	UpdateTime: types.StringValue(device.State.UpdateTime),
-	// 	BinaryData: types.StringValue(device.State.BinaryData),
-	// }
+	if plan.State.IsNull() {
+		attributes := map[string]attr.Value{
+			"update_time": types.StringNull(),
+			"binary_data": types.StringNull(),
+		}
+		plan.State = types.ObjectValueMust(StateModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"update_time": types.StringValue(device.State.UpdateTime),
+			"binary_data": types.StringValue(device.State.BinaryData),
+		}
+		plan.State = types.ObjectValueMust(StateModelTypes, attributes)
+	}
 
-	// plan.LastErrorStatus = lastErrorStatusModel{
-	// 	Code:    types.Int64Value(device.LastErrorStatus.Code),
-	// 	Message: types.StringValue(device.LastErrorStatus.Message),
-	// }
+	if plan.LastErrorStatus.IsNull() {
+		attributes := map[string]attr.Value{
+			"code":    types.Int64Null(),
+			"message": types.StringNull(),
+		}
+		plan.LastErrorStatus = types.ObjectValueMust(LastErrorStatusModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"code":    types.Int64Value(device.LastErrorStatus.Code),
+			"message": types.StringValue(device.LastErrorStatus.Message),
+		}
+		plan.LastErrorStatus = types.ObjectValueMust(LastErrorStatusModelTypes, attributes)
+	}
 
-	// plan.GatewayConfig = gatewayConfigModel{
-	// 	GatewayType:             types.StringValue(device.GatewayConfig.GatewayType),
-	// 	GatewayAuthMethod:       types.StringValue(device.GatewayConfig.GatewayAuthMethod),
-	// 	LastAccessedGatewayID:   types.StringValue(device.GatewayConfig.LastAccessedGatewayId),
-	// 	LastAccessedGatewayTime: types.StringValue(device.GatewayConfig.LastAccessedGatewayTime),
-	// }
+	if plan.GatewayConfig.IsNull() {
+		attributes := map[string]attr.Value{
+			"gateway_type":               types.StringNull(),
+			"gateway_auth_method":        types.StringNull(),
+			"last_accessed_gateway_id":   types.StringNull(),
+			"last_accessed_gateway_time": types.StringNull(),
+		}
+		plan.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"gateway_type":               types.StringValue(device.GatewayConfig.GatewayType),
+			"gateway_auth_method":        types.StringValue(device.GatewayConfig.GatewayAuthMethod),
+			"last_accessed_gateway_id":   types.StringValue(device.GatewayConfig.LastAccessedGatewayId),
+			"last_accessed_gateway_time": types.StringValue(device.GatewayConfig.LastAccessedGatewayTime),
+		}
+		plan.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
+	}
 
-	// plan.Config = configModel{
-	// 	Version:         types.Int64Value(device.Config.Version),
-	// 	CloudUpdateTime: types.StringValue(device.Config.CloudUpdateTime),
-	// 	// DeviceAckTime:   types.StringValue(device.Config.DeviceAckTime),
-	// 	// BinaryData:      types.StringValue(device.Config.BinaryData),
-	// }
+	if plan.Config.IsNull() {
+		attributes := map[string]attr.Value{
+			"version":           types.Int64Null(),
+			"cloud_update_time": types.StringNull(),
+		}
+		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"version":           types.Int64Value(device.Config.Version),
+			"cloud_update_time": types.StringValue(device.Config.CloudUpdateTime),
+		}
+		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
+	}
+
+	if plan.Metadata.IsNull() {
+		attributes := map[string]attr.Value{}
+		plan.Metadata = types.ObjectValueMust(MetadataModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{}
+		plan.Metadata = types.ObjectValueMust(MetadataModelTypes, attributes)
+	}
 
 	plan.LastConfigAckTime = types.StringValue(device.LastConfigAckTime)
 	plan.LastConfigSendTime = types.StringValue(device.LastConfigSendTime)
@@ -380,18 +460,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	plan.LastStateTime = types.StringValue(device.LastStateTime)
 	plan.NumID = types.StringValue(strconv.FormatUint(device.NumId, 10))
 	plan.Blocked = types.BoolValue(device.Blocked)
-
-	// resource "clearblade_iot_device" "test-device" {
-	// 	+ id                    = "basic-device-100"
-	// 	+ last_config_ack_time  = (known after apply)
-	// 	+ last_config_send_time = (known after apply)
-	// 	+ last_error_time       = (known after apply)
-	// 	+ last_event_time       = (known after apply)
-	// 	+ last_heartbeat_time   = (known after apply)
-	// 	+ last_state_time       = (known after apply)
-	// 	+ num_id                = (known after apply)
-	// 	+ registry              = "bas-3"
-	//   }
+	plan.LogLevel = types.StringValue(device.LogLevel)
 
 	tflog.Debug(ctx, "device created")
 
@@ -436,18 +505,7 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.LastStateTime = types.StringValue(device.LastStateTime)
 	state.NumID = types.StringValue(strconv.FormatUint(device.NumId, 10))
 	state.Blocked = types.BoolValue(device.Blocked)
-
-	// resource "clearblade_iot_device" "test-device" {
-	// 	+ id                    = "basic-device-100"
-	// 	+ last_config_ack_time  = (known after apply)
-	// 	+ last_config_send_time = (known after apply)
-	// 	+ last_error_time       = (known after apply)
-	// 	+ last_event_time       = (known after apply)
-	// 	+ last_heartbeat_time   = (known after apply)
-	// 	+ last_state_time       = (known after apply)
-	// 	+ num_id                = (known after apply)
-	// 	+ registry              = "bas-3"
-	//   }
+	state.LogLevel = types.StringValue(device.LogLevel)
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
