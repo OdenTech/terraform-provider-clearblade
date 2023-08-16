@@ -3,11 +3,8 @@ package clearblade
 import (
 	"context"
 	"fmt"
-
 	"os"
 	"strconv"
-
-	//"time"
 
 	"github.com/clearblade/go-iot"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -91,13 +88,15 @@ var MetadataModelTypes = map[string]attr.Type{}
 type configModel struct {
 	Version         types.Int64  `tfsdk:"version"`
 	CloudUpdateTime types.String `tfsdk:"cloud_update_time"`
-	// DeviceAckTime   types.String `tfsdk:"device_ack_time"`
-	// BinaryData      types.String `tfsdk:"binary_data"`
+	DeviceAckTime   types.String `tfsdk:"device_ack_time"`
+	BinaryData      types.String `tfsdk:"binary_data"`
 }
 
 var ConfigModelTypes = map[string]attr.Type{
 	"version":           types.Int64Type,
 	"cloud_update_time": types.StringType,
+	"device_ack_time":   types.StringType,
+	"binary_data":       types.StringType,
 }
 
 type StateModel struct {
@@ -142,21 +141,21 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Computed:    true,
 			},
 			"credentials": schema.ListNestedAttribute{
-				Optional:    true,
+				Optional: true,
+				//Computed:    true,
 				Description: "The credentials used to authenticate this device.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"expiration_time": schema.StringAttribute{
-							Computed:    true,
 							Optional:    true,
 							Description: "The time at which this credential becomes invalid.",
 						},
 						"public_key": schema.SingleNestedAttribute{
-							Required:            true,
+							Optional:            true,
 							MarkdownDescription: "A public key used to verify the signature of JSON Web Tokens (JWTs).",
 							Attributes: map[string]schema.Attribute{
 								"format": schema.StringAttribute{
-									Required: true,
+									Optional: true,
 									Validators: []validator.String{
 										stringvalidator.OneOf(
 											"RSA_PEM",
@@ -168,7 +167,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 									Description: `The format of the key. Possible values: ["RSA_PEM", "RSA_X509_PEM", "ES256_PEM", "ES256_X509_PEM"]`,
 								},
 								"key": schema.StringAttribute{
-									Required:    true,
+									Optional:    true,
 									Description: "The key data.",
 								},
 							},
@@ -248,14 +247,16 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 						Computed:    true,
 						Description: `The time at which this configuration version was updated in Cloud IoT Core.`,
 					},
-					// "device_ack_time": schema.StringAttribute{
-					// 	Computed:    true,
-					// 	Description: `The time at which Cloud IoT Core received the acknowledgment from the device, indicating that the device has received this configuration version.`,
-					// },
-					// "binary_data": schema.StringAttribute{
-					// 	Optional:    true,
-					// 	Description: `The device configuration data.`,
-					// },
+					"device_ack_time": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The time at which Cloud IoT Core received the acknowledgment from the device, indicating that the device has received this configuration version.`,
+					},
+					"binary_data": schema.StringAttribute{
+						Optional:    true,
+						Computed:    true,
+						Description: `The device configuration data.`,
+					},
 				},
 			},
 			"state": schema.SingleNestedAttribute{
@@ -348,8 +349,6 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Debug(ctx, "Creating iot device resource")
 
-	tflog.Debug(ctx, "cb registry debug")
-
 	// Retrieve values from plan
 	var plan deviceResourceModel
 	diags := req.Plan.Get(ctx, &plan)
@@ -358,10 +357,6 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		tflog.Debug(ctx, "error in the diagnostics")
 		return
 	}
-
-	ctx = tflog.SetField(ctx, "cb-registry", plan.Registry.ValueString())
-
-	tflog.Debug(ctx, "cb registry debug")
 
 	// Create a new device resource on ClearBlade IoT Core
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.Registry.ValueString())
@@ -434,12 +429,16 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		attributes := map[string]attr.Value{
 			"version":           types.Int64Null(),
 			"cloud_update_time": types.StringNull(),
+			"device_ack_time":   types.StringNull(),
+			"binary_data":       types.StringNull(),
 		}
 		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
 	} else {
 		attributes := map[string]attr.Value{
 			"version":           types.Int64Value(device.Config.Version),
 			"cloud_update_time": types.StringValue(device.Config.CloudUpdateTime),
+			"device_ack_time":   types.StringValue(device.Config.DeviceAckTime),
+			"binary_data":       types.StringValue(device.Config.BinaryData),
 		}
 		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
 	}
