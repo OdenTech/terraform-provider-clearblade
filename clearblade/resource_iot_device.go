@@ -712,7 +712,7 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 			LastAccessedGatewayTime: gatewayConfigModel.LastAccessedGatewayTime.ValueString(),
 		},
 	}).
-		UpdateMask(`blocked,credentials,gatewayConfig.gatewayAuthMethod,logLevel,metadata`).Do()
+		UpdateMask(`blocked,credentials,gatewayConfig,logLevel,metadata`).Do()
 	// Could not create a new device, unexpected error: googleapi: Error 400: The field mask 'updateMask' must contain mutable fields. The following fields are mutable: ["blocked","credentials","gatewayConfig.gatewayAuthMethod","logLevel","metadata"]
 
 	if err != nil {
