@@ -371,7 +371,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Create a new device resource on ClearBlade IoT Core
+	// Create a new device resource on ClearBlade IoT Core - Generate API request body from plan
 	credentials := []*iot.DeviceCredential{}
 	for _, v := range plan.Credentials {
 		credentials = append(credentials, &iot.DeviceCredential{
@@ -392,6 +392,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		convMetadata[k] = v.String()
 	}
 
+	// Create a new device resource on ClearBlade IoT Core
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.Registry.ValueString())
 	device, err := r.client.Projects.Locations.Registries.Devices.Create(parent, &iot.Device{
 		Id:          plan.ID.ValueString(),
@@ -414,6 +415,8 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		)
 		return
 	}
+
+	tflog.Debug(ctx, "device created")
 
 	// Map response body to schema and populate Computed attribute values
 	plan.Name = types.StringValue(device.Name)
@@ -464,7 +467,6 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 		plan.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
 	} else {
-		tflog.Debug(ctx, "gateway is called")
 		attributes := map[string]attr.Value{
 			"gateway_type":               types.StringValue(device.GatewayConfig.GatewayType),
 			"gateway_auth_method":        types.StringValue(device.GatewayConfig.GatewayAuthMethod),
@@ -507,7 +509,17 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 	}
 
-	tflog.Debug(ctx, "device created")
+	// To-Do: Check for the escape \ added to the state on refresh
+	// was cty.StringVal("Austin"), but now cty.StringVal("\"Austin\"")
+	attributes := map[string]attr.Value{}
+	for k, v := range device.Metadata {
+		s, _ := strconv.Unquote(v)
+		attributes[k] = types.StringValue(s)
+	}
+	ctx = tflog.SetField(ctx, "state attributes", attributes)
+	// ctx = tflog.SetField(ctx, "state element metadata", state.Metadata.ElementType(ctx))
+	tflog.Debug(ctx, "testing state metadata")
+	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -552,6 +564,96 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.Blocked = types.BoolValue(device.Blocked)
 	state.LogLevel = types.StringValue(device.LogLevel)
 
+	if state.State.IsNull() {
+		attributes := map[string]attr.Value{
+			"update_time": types.StringNull(),
+			"binary_data": types.StringNull(),
+		}
+		state.State = types.ObjectValueMust(StateModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"update_time": types.StringValue(device.State.UpdateTime),
+			"binary_data": types.StringValue(device.State.BinaryData),
+		}
+		state.State = types.ObjectValueMust(StateModelTypes, attributes)
+	}
+
+	if state.LastErrorStatus.IsNull() {
+		attributes := map[string]attr.Value{
+			"code":    types.Int64Null(),
+			"message": types.StringNull(),
+		}
+		state.LastErrorStatus = types.ObjectValueMust(LastErrorStatusModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"code":    types.Int64Value(device.LastErrorStatus.Code),
+			"message": types.StringValue(device.LastErrorStatus.Message),
+		}
+		state.LastErrorStatus = types.ObjectValueMust(LastErrorStatusModelTypes, attributes)
+	}
+
+	if state.GatewayConfig.IsNull() {
+		attributes := map[string]attr.Value{
+			"gateway_type":               types.StringNull(),
+			"gateway_auth_method":        types.StringNull(),
+			"last_accessed_gateway_id":   types.StringNull(),
+			"last_accessed_gateway_time": types.StringNull(),
+		}
+		state.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"gateway_type":               types.StringValue(device.GatewayConfig.GatewayType),
+			"gateway_auth_method":        types.StringValue(device.GatewayConfig.GatewayAuthMethod),
+			"last_accessed_gateway_id":   types.StringValue(device.GatewayConfig.LastAccessedGatewayId),
+			"last_accessed_gateway_time": types.StringValue(device.GatewayConfig.LastAccessedGatewayTime),
+		}
+		state.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
+	}
+
+	if state.Config.IsNull() {
+		attributes := map[string]attr.Value{
+			"version":           types.Int64Null(),
+			"cloud_update_time": types.StringNull(),
+			"device_ack_time":   types.StringNull(),
+			"binary_data":       types.StringNull(),
+		}
+		state.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"version":           types.Int64Value(device.Config.Version),
+			"cloud_update_time": types.StringValue(device.Config.CloudUpdateTime),
+			"device_ack_time":   types.StringValue(device.Config.DeviceAckTime),
+			"binary_data":       types.StringValue(device.Config.BinaryData),
+		}
+		state.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
+	}
+
+	if !(state.Credentials == nil || (reflect.ValueOf(state.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(state.Credentials).IsNil())) {
+		state.Credentials = []DeviceCredentialsModel{}
+		for _, credential := range device.Credentials {
+			state.Credentials = append(state.Credentials, DeviceCredentialsModel{
+				PublicKeyCertificate: DevicePublicKeyCertificateModel{
+					ExpirationTime: types.StringValue(credential.ExpirationTime),
+					PublicKey: PublicKeyModel{
+						Format: types.StringValue(credential.PublicKey.Format),
+						Key:    types.StringValue(credential.PublicKey.Key),
+					},
+				},
+			})
+		}
+	}
+
+	// To-Do: Check for the escape \ added to the state on refresh
+	attributes := map[string]attr.Value{}
+	for k, v := range device.Metadata {
+		s, _ := strconv.Unquote(v)
+		attributes[k] = types.StringValue(s)
+	}
+	// ctx = tflog.SetField(ctx, "state attributes", attributes)
+	// ctx = tflog.SetField(ctx, "state element metadata", state.Metadata.ElementType(ctx))
+	// tflog.Debug(ctx, "testing state metadata")
+	state.Metadata = types.MapValueMust(state.Metadata.ElementType(ctx), attributes)
+
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -563,10 +665,197 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	tflog.Debug(ctx, "Updating iot device resource")
+
+	// Retrieve values from plan
+	var plan deviceResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		tflog.Debug(ctx, "error in the diagnostics")
+		return
+	}
+
+	// Generate API request body from plan
+	credentials := []*iot.DeviceCredential{}
+	for _, v := range plan.Credentials {
+		credentials = append(credentials, &iot.DeviceCredential{
+			ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
+			PublicKey: &iot.PublicKeyCredential{
+				Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
+				Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
+			},
+		})
+	}
+
+	var gatewayConfigModel GatewayConfigModel
+	plan.GatewayConfig.As(ctx, &gatewayConfigModel, basetypes.ObjectAsOptions{})
+
+	metadaAttribute := plan.Metadata.Elements()
+	convMetadata := make(map[string]string)
+	for k, v := range metadaAttribute {
+		convMetadata[k] = v.String()
+	}
+
+	// Update existing device resource on ClearBlade IoT Core
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s/devices/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.Registry.ValueString(), plan.ID.ValueString())
+	device, err := r.client.Projects.Locations.Registries.Devices.Patch(parent, &iot.Device{
+		Id:          plan.ID.ValueString(),
+		Credentials: credentials,
+		Blocked:     plan.Blocked.ValueBool(),
+		LogLevel:    plan.LogLevel.ValueString(),
+		Metadata:    convMetadata,
+		GatewayConfig: &iot.GatewayConfig{
+			GatewayAuthMethod:       gatewayConfigModel.GatewayAuthMethod.ValueString(),
+			GatewayType:             gatewayConfigModel.GatewayType.ValueString(),
+			LastAccessedGatewayId:   gatewayConfigModel.LastAccessedGatewayID.ValueString(),
+			LastAccessedGatewayTime: gatewayConfigModel.LastAccessedGatewayTime.ValueString(),
+		},
+	}).
+		UpdateMask(`blocked,credentials,gatewayConfig.gatewayAuthMethod,logLevel,metadata`).Do()
+	// Could not create a new device, unexpected error: googleapi: Error 400: The field mask 'updateMask' must contain mutable fields. The following fields are mutable: ["blocked","credentials","gatewayConfig.gatewayAuthMethod","logLevel","metadata"]
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating a device",
+			"Could not create a new device, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	tflog.Debug(ctx, "device updated")
+
+	// Update resource - Map response body to schema and populate Computed attribute values
+	plan.Name = types.StringValue(device.Name)
+	plan.LastConfigAckTime = types.StringValue(device.LastConfigAckTime)
+	plan.LastConfigSendTime = types.StringValue(device.LastConfigSendTime)
+	plan.LastErrorTime = types.StringValue(device.LastErrorTime)
+	plan.LastEventTime = types.StringValue(device.LastEventTime)
+	plan.LastHeartbeatTime = types.StringValue(device.LastHeartbeatTime)
+	plan.LastStateTime = types.StringValue(device.LastStateTime)
+	plan.NumID = types.StringValue(strconv.FormatUint(device.NumId, 10))
+	plan.Blocked = types.BoolValue(device.Blocked)
+	plan.LogLevel = types.StringValue(device.LogLevel)
+
+	if plan.State.IsNull() {
+		attributes := map[string]attr.Value{
+			"update_time": types.StringNull(),
+			"binary_data": types.StringNull(),
+		}
+		plan.State = types.ObjectValueMust(StateModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"update_time": types.StringValue(device.State.UpdateTime),
+			"binary_data": types.StringValue(device.State.BinaryData),
+		}
+		plan.State = types.ObjectValueMust(StateModelTypes, attributes)
+	}
+
+	if plan.LastErrorStatus.IsNull() {
+		attributes := map[string]attr.Value{
+			"code":    types.Int64Null(),
+			"message": types.StringNull(),
+		}
+		plan.LastErrorStatus = types.ObjectValueMust(LastErrorStatusModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"code":    types.Int64Value(device.LastErrorStatus.Code),
+			"message": types.StringValue(device.LastErrorStatus.Message),
+		}
+		plan.LastErrorStatus = types.ObjectValueMust(LastErrorStatusModelTypes, attributes)
+	}
+
+	if plan.GatewayConfig.IsNull() {
+		attributes := map[string]attr.Value{
+			"gateway_type":               types.StringNull(),
+			"gateway_auth_method":        types.StringNull(),
+			"last_accessed_gateway_id":   types.StringNull(),
+			"last_accessed_gateway_time": types.StringNull(),
+		}
+		plan.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"gateway_type":               types.StringValue(device.GatewayConfig.GatewayType),
+			"gateway_auth_method":        types.StringValue(device.GatewayConfig.GatewayAuthMethod),
+			"last_accessed_gateway_id":   types.StringValue(device.GatewayConfig.LastAccessedGatewayId),
+			"last_accessed_gateway_time": types.StringValue(device.GatewayConfig.LastAccessedGatewayTime),
+		}
+		plan.GatewayConfig = types.ObjectValueMust(GatewayConfigModelTypes, attributes)
+	}
+
+	if plan.Config.IsNull() {
+		attributes := map[string]attr.Value{
+			"version":           types.Int64Null(),
+			"cloud_update_time": types.StringNull(),
+			"device_ack_time":   types.StringNull(),
+			"binary_data":       types.StringNull(),
+		}
+		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"version":           types.Int64Value(device.Config.Version),
+			"cloud_update_time": types.StringValue(device.Config.CloudUpdateTime),
+			"device_ack_time":   types.StringValue(device.Config.DeviceAckTime),
+			"binary_data":       types.StringValue(device.Config.BinaryData),
+		}
+		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
+	}
+
+	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
+		plan.Credentials = []DeviceCredentialsModel{}
+		for _, credential := range device.Credentials {
+			plan.Credentials = append(plan.Credentials, DeviceCredentialsModel{
+				PublicKeyCertificate: DevicePublicKeyCertificateModel{
+					ExpirationTime: types.StringValue(credential.ExpirationTime),
+					PublicKey: PublicKeyModel{
+						Format: types.StringValue(credential.PublicKey.Format),
+						Key:    types.StringValue(credential.PublicKey.Key),
+					},
+				},
+			})
+		}
+	}
+
+	// To-Do: Check for the escape \ added to the state on refresh
+	attributes := map[string]attr.Value{}
+	for k, v := range device.Metadata {
+		s, _ := strconv.Unquote(v)
+		attributes[k] = types.StringValue(s)
+	}
+	// ctx = tflog.SetField(ctx, "state attributes", attributes)
+	// ctx = tflog.SetField(ctx, "state element metadata", state.Metadata.ElementType(ctx))
+	// tflog.Debug(ctx, "testing state metadata")
+	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
+
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	tflog.Debug(ctx, "Deleting device")
+	// Retrieve values from state
+	var state deviceResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Delete existing device resource on ClearBlade IoT Core
+	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s/devices/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), state.Registry.ValueString(), state.ID.ValueString())
+	_, err := r.client.Projects.Locations.Registries.Devices.Delete(parent).Do()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Deleting Clearblade IoT Core device",
+			"Could not delete device, unexpected error: "+err.Error(),
+		)
+		return
+	}
 }
 
 func (r *deviceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
