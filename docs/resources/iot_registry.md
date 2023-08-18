@@ -14,7 +14,7 @@ description: |-
 terraform {
   required_providers {
     clearblade = {
-      version = "0.2.2"
+      version = "0.2.3"
       source  = "ClearBlade/clearblade"
     }
   }
@@ -23,6 +23,8 @@ terraform {
 provider "clearblade" {
   # Configuration options
   credentials = var.clearblade-creds
+  project     = var.gcp_project_id
+  region      = var.gcp_region
 }
 
 resource "clearblade_iot_registry" "example-registry" {
