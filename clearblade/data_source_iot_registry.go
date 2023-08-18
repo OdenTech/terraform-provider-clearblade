@@ -28,12 +28,12 @@ type deviceRegistriesDataSourceModel struct {
 type deviceRegistriesModel struct {
 	ID                       types.String                    `tfsdk:"id"`
 	Name                     types.String                    `tfsdk:"name"`
-	EventNotificationConfigs []eventNotificationConfigsModel `tfsdk:"event_notification_configs"`
-	StateNotificationConfig  stateNotificationConfigModel    `tfsdk:"state_notification_config"`
-	HttpConfig               httpConfigModel                 `tfsdk:"http_config"`
-	MqttConfig               mqttConfigModel                 `tfsdk:"mqtt_config"`
+	EventNotificationConfigs []EventNotificationConfigsModel `tfsdk:"event_notification_configs"`
+	StateNotificationConfig  StateNotificationConfigModel    `tfsdk:"state_notification_config"`
+	HttpConfig               HttpConfigModel                 `tfsdk:"http_config"`
+	MqttConfig               MqttConfigModel                 `tfsdk:"mqtt_config"`
 	LogLevel                 types.String                    `tfsdk:"log_level"`
-	Credentials              []credentialsModel              `tfsdk:"credentials"`
+	Credentials              []CredentialsModel              `tfsdk:"credentials"`
 }
 
 func NewDeviceRegistriesDataSource() datasource.DataSource {
@@ -200,26 +200,26 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 	// Map response body to model
 	for _, device_registry := range device_registries.DeviceRegistries {
 		registryState := deviceRegistriesModel{
-			HttpConfig: httpConfigModel{
+			HttpConfig: HttpConfigModel{
 				HttpEnabledState: types.StringValue(device_registry.HttpConfig.HttpEnabledState),
 			},
 			ID:       types.StringValue(device_registry.Id),
 			LogLevel: types.StringValue(device_registry.LogLevel),
-			MqttConfig: mqttConfigModel{
+			MqttConfig: MqttConfigModel{
 				MqttEnabledState: types.StringValue(device_registry.MqttConfig.MqttEnabledState),
 			},
 			Name: types.StringValue(device_registry.Name),
-			StateNotificationConfig: stateNotificationConfigModel{
+			StateNotificationConfig: StateNotificationConfigModel{
 				PubsubTopicName: types.StringValue(device_registry.StateNotificationConfig.PubsubTopicName),
 			},
 		}
 
 		for _, credential := range device_registry.Credentials {
-			registryState.Credentials = append(registryState.Credentials, credentialsModel{
+			registryState.Credentials = append(registryState.Credentials, CredentialsModel{
 				PublicKeyCertificate: publicKeyCertificateModel{
 					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-					X509Details: x509DetailsModel{
+					X509Details: X509CertificateDetailsModel{
 						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
 						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
 						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
@@ -232,7 +232,7 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 		}
 
 		for _, eventNotificationConfig := range device_registry.EventNotificationConfigs {
-			registryState.EventNotificationConfigs = append(registryState.EventNotificationConfigs, eventNotificationConfigsModel{
+			registryState.EventNotificationConfigs = append(registryState.EventNotificationConfigs, EventNotificationConfigsModel{
 				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
 			})
