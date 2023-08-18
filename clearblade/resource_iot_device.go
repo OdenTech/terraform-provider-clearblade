@@ -61,9 +61,8 @@ type DeviceCredentialsModel struct {
 }
 
 type DevicePublicKeyCertificateModel struct {
-	ExpirationTime types.String `tfsdk:"expiration_time"`
-	//PublicKey      types.Object `tfsdk:"public_key"`
-	PublicKey PublicKeyModel `tfsdk:"public_key"`
+	ExpirationTime types.String   `tfsdk:"expiration_time"`
+	PublicKey      PublicKeyModel `tfsdk:"public_key"`
 }
 
 var DevicePublicKeyCertificateModelTypes = map[string]attr.Type{
@@ -371,7 +370,7 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	// Create a new device resource on ClearBlade IoT Core - Generate API request body from plan
+	// Generate API request body from plan
 	credentials := []*iot.DeviceCredential{}
 	for _, v := range plan.Credentials {
 		credentials = append(credentials, &iot.DeviceCredential{
@@ -532,7 +531,8 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 
 // Read refreshes the Terraform state with the latest data.
 func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	tflog.Debug(ctx, "reading device ---")
+	tflog.Debug(ctx, "Reading the device resource")
+
 	// Get current state
 	var state deviceResourceModel
 	diags := req.State.Get(ctx, &state)
@@ -628,6 +628,13 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 		state.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
 	}
 
+	attributes := map[string]attr.Value{}
+	for k, v := range device.Metadata {
+		s, _ := strconv.Unquote(v)
+		attributes[k] = types.StringValue(s)
+	}
+	state.Metadata = types.MapValueMust(state.Metadata.ElementType(ctx), attributes)
+
 	if !(state.Credentials == nil || (reflect.ValueOf(state.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(state.Credentials).IsNil())) {
 		state.Credentials = []DeviceCredentialsModel{}
 		for _, credential := range device.Credentials {
@@ -642,17 +649,6 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 			})
 		}
 	}
-
-	// To-Do: Check for the escape \ added to the state on refresh
-	attributes := map[string]attr.Value{}
-	for k, v := range device.Metadata {
-		s, _ := strconv.Unquote(v)
-		attributes[k] = types.StringValue(s)
-	}
-	// ctx = tflog.SetField(ctx, "state attributes", attributes)
-	// ctx = tflog.SetField(ctx, "state element metadata", state.Metadata.ElementType(ctx))
-	// tflog.Debug(ctx, "testing state metadata")
-	state.Metadata = types.MapValueMust(state.Metadata.ElementType(ctx), attributes)
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -672,7 +668,6 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		tflog.Debug(ctx, "error in the diagnostics")
 		return
 	}
 
@@ -725,7 +720,7 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	tflog.Debug(ctx, "device updated")
 
-	// Update resource - Map response body to schema and populate Computed attribute values
+	// Update device resource - Map response body to schema and populate Computed attribute values
 	plan.Name = types.StringValue(device.Name)
 	plan.LastConfigAckTime = types.StringValue(device.LastConfigAckTime)
 	plan.LastConfigSendTime = types.StringValue(device.LastConfigSendTime)
@@ -801,6 +796,13 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
 	}
 
+	attributes := map[string]attr.Value{}
+	for k, v := range device.Metadata {
+		s, _ := strconv.Unquote(v)
+		attributes[k] = types.StringValue(s)
+	}
+	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
+
 	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
 		plan.Credentials = []DeviceCredentialsModel{}
 		for _, credential := range device.Credentials {
@@ -816,17 +818,6 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 	}
 
-	// To-Do: Check for the escape \ added to the state on refresh
-	attributes := map[string]attr.Value{}
-	for k, v := range device.Metadata {
-		s, _ := strconv.Unquote(v)
-		attributes[k] = types.StringValue(s)
-	}
-	// ctx = tflog.SetField(ctx, "state attributes", attributes)
-	// ctx = tflog.SetField(ctx, "state element metadata", state.Metadata.ElementType(ctx))
-	// tflog.Debug(ctx, "testing state metadata")
-	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -837,7 +828,8 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *deviceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	tflog.Debug(ctx, "Deleting device")
+	tflog.Debug(ctx, "Deleting a device resource")
+
 	// Retrieve values from state
 	var state deviceResourceModel
 	diags := req.State.Get(ctx, &state)
