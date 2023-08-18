@@ -1,6 +1,7 @@
 <div align="center">
    <p>ClearBlade Terraform provider.</p>
    <a href="https://clearblade.atlassian.net/wiki/spaces/IC/overview"><img src="https://img.shields.io/static/v1?label=Docs&message=API Ref&color=000000&style=for-the-badge" /></a>
+   <a href="https://clearblade.atlassian.net/wiki/spaces/IC/pages/2399109225/ClearBlade+Terraform+provider"><img src="https://img.shields.io/static/v1?label=Docs&message=SDK&color=003300&style=for-the-badge" /></a>
   <a href="https://opensource.org/licenses/MPL-2.0"><img src="https://img.shields.io/badge/License-MPL-blue.svg?style=for-the-badge" /></a>
 </div>
 
