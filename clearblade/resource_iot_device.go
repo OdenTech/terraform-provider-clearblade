@@ -512,16 +512,12 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 	}
 
-	// To-Do: Check for the escape \ added to the state on refresh
-	// was cty.StringVal("Austin"), but now cty.StringVal("\"Austin\"")
 	attributes := map[string]attr.Value{}
 	for k, v := range device.Metadata {
 		s, _ := strconv.Unquote(v)
 		attributes[k] = types.StringValue(s)
 	}
 	ctx = tflog.SetField(ctx, "state attributes", attributes)
-	// ctx = tflog.SetField(ctx, "state element metadata", state.Metadata.ElementType(ctx))
-	tflog.Debug(ctx, "testing state metadata")
 	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
 
 	// Set state to fully populated data
