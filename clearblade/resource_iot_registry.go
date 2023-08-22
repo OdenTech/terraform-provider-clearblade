@@ -13,11 +13,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -112,18 +112,17 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The identifier of this device registry. For example, myRegistry.",
 				Required:            true,
+			},
+			"name": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The resource path name. For example, projects/example-project/locations/us-central1/registries/my-registry.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The resource path name. For example, projects/example-project/locations/us-central1/registries/my-registry.",
-				Optional:            true,
-				Computed:            true,
-			},
 			"event_notification_configs": schema.ListNestedAttribute{
 				Optional: true,
-				Computed: true,
+				// Computed: true,
 				MarkdownDescription: "The configuration for notification of telemetry events received from the device. " +
 					"All telemetry events that were successfully published by the device and acknowledged by Clearblade IoT Core are guaranteed to be delivered to Cloud Pub/Sub.",
 				NestedObject: schema.NestedAttributeObject{
@@ -134,6 +133,7 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 						},
 						"sub_folder_matches": schema.StringAttribute{
 							Optional: true,
+							Computed: true,
 							MarkdownDescription: "If the subfolder name matches this string exactly, this configuration will be used. The string must not include the leading '/' character. If empty, all strings are matched. " +
 								"This field is used only for telemetry events; subfolders are not supported for state changes.",
 						},
@@ -190,9 +190,9 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 				},
 			},
 			"credentials": schema.ListNestedAttribute{
-				MarkdownDescription: "List of public key certificates to authenticate devices.",
 				Optional:            true,
-				//Computed:            true,
+				Computed:            true,
+				MarkdownDescription: "List of public key certificates to authenticate devices.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"public_key_certificate": schema.SingleNestedAttribute{
@@ -289,7 +289,9 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	event_notification_configs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
-		ctx = tflog.SetField(ctx, "checking subfolder matches", v.SubfolderMatches.ValueString())
+		tflog.Debug(ctx, "registry create event 1")
+		ctx = tflog.SetField(ctx, "registry create event notify pubsub topic", v.PubsubTopicName.ValueString())
+		ctx = tflog.SetField(ctx, "registry create event notify subfolder matches", v.SubfolderMatches.ValueString())
 		event_notification_configs = append(event_notification_configs, &iot.EventNotificationConfig{
 			PubsubTopicName:  v.PubsubTopicName.ValueString(),
 			SubfolderMatches: v.SubfolderMatches.ValueString(),
@@ -304,10 +306,11 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	plan.HttpConfig.As(ctx, &httpConfig, basetypes.ObjectAsOptions{})
 
 	createRequestPayload := iot.DeviceRegistry{
-		EventNotificationConfigs: event_notification_configs,
-		Credentials:              credentials,
 		Id:                       plan.ID.ValueString(),
 		Name:                     plan.Name.ValueString(),
+		LogLevel:                 plan.LogLevel.ValueString(),
+		EventNotificationConfigs: event_notification_configs,
+		Credentials:              credentials,
 		StateNotificationConfig: &iot.StateNotificationConfig{
 			PubsubTopicName: stateNotificationConfig.PubsubTopicName.ValueString(),
 		},
@@ -317,7 +320,6 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		HttpConfig: &iot.HttpConfig{
 			HttpEnabledState: httpConfig.HttpEnabledState.ValueString(),
 		},
-		LogLevel: plan.LogLevel.ValueString(),
 	}
 
 	// Create a new device registry resource on ClearBlade IoT Core
@@ -339,6 +341,9 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
 	for _, eventNotificationConfig := range registry.EventNotificationConfigs {
+		tflog.Debug(ctx, "registry create event 2")
+		ctx = tflog.SetField(ctx, "registry create event notify pubsub topic", types.StringValue(eventNotificationConfig.PubsubTopicName))
+		ctx = tflog.SetField(ctx, "registry create event notify subfolder matches", types.StringValue(eventNotificationConfig.SubfolderMatches))
 		plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
 			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
@@ -436,11 +441,14 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 
 	// Overwrite items with refreshed state
 	state.Name = types.StringValue(registry.Name)
+
 	state.LogLevel = types.StringValue(registry.LogLevel)
 
 	state.EventNotificationConfigs = []EventNotificationConfigsModel{}
 	for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-		ctx = tflog.SetField(ctx, "reading subfolder matches", eventNotificationConfig.SubfolderMatches)
+		tflog.Debug(ctx, "registry read event 1")
+		ctx = tflog.SetField(ctx, "registry read event 1 notify pubsub topic", types.StringValue(eventNotificationConfig.PubsubTopicName))
+		ctx = tflog.SetField(ctx, "registry read event 1 notify subfolder matches", types.StringValue(eventNotificationConfig.SubfolderMatches))
 		state.EventNotificationConfigs = append(state.EventNotificationConfigs, EventNotificationConfigsModel{
 			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
@@ -459,24 +467,22 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 		"http_enabled_state": types.StringValue(registry.HttpConfig.HttpEnabledState),
 	})
 
-	if !(state.Credentials == nil || (reflect.ValueOf(state.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(state.Credentials).IsNil())) {
-		state.Credentials = []CredentialsModel{}
-		for _, credential := range registry.Credentials {
-			state.Credentials = append(state.Credentials, CredentialsModel{
-				PublicKeyCertificate: publicKeyCertificateModel{
-					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
-					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-					X509Details: X509CertificateDetailsModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
+	state.Credentials = []CredentialsModel{}
+	for _, credential := range registry.Credentials {
+		state.Credentials = append(state.Credentials, CredentialsModel{
+			PublicKeyCertificate: publicKeyCertificateModel{
+				Format:      types.StringValue(credential.PublicKeyCertificate.Format),
+				Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
+				X509Details: X509CertificateDetailsModel{
+					Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+					Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+					StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
 				},
-			})
-		}
+			},
+		})
 	}
 
 	// Set refreshed state
@@ -501,6 +507,7 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Generate API request body from plan
+	// ctx = tflog.SetField(ctx, "registry update length plan credentials", len(plan.Credentials))
 	credentials := []*iot.RegistryCredential{}
 	for _, v := range plan.Credentials {
 		credentials = append(credentials, &iot.RegistryCredential{
@@ -519,9 +526,12 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 		})
 	}
 
-	event_notification_configs := []*iot.EventNotificationConfig{}
+	eventNotificationConfigs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
-		event_notification_configs = append(event_notification_configs, &iot.EventNotificationConfig{
+		tflog.Debug(ctx, "registry update event 1")
+		ctx = tflog.SetField(ctx, "registry update event 1 notify pubsub topic", v.PubsubTopicName.ValueString())
+		ctx = tflog.SetField(ctx, "registry update event 1 notify subfolder matches", v.SubfolderMatches.ValueString())
+		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
 			PubsubTopicName:  v.PubsubTopicName.ValueString(),
 			SubfolderMatches: v.SubfolderMatches.ValueString(),
 		})
@@ -535,7 +545,7 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	plan.HttpConfig.As(ctx, &httpConfig, basetypes.ObjectAsOptions{})
 
 	updateRequestPayload := iot.DeviceRegistry{
-		EventNotificationConfigs: event_notification_configs,
+		EventNotificationConfigs: eventNotificationConfigs,
 		Credentials:              credentials,
 		Id:                       plan.ID.ValueString(),
 		Name:                     plan.Name.ValueString(),
@@ -554,9 +564,10 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	// Update an existing registry
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.ID.ValueString())
 
-	registry, err := r.client.Projects.Locations.Registries.
+	_, err := r.client.Projects.Locations.Registries.
 		Patch(parent, &updateRequestPayload).
 		UpdateMask(`httpConfig.http_enabled_state,logLevel,mqttConfig.mqtt_enabled_state,stateNotificationConfig.pubsub_topic_name,credentials,eventNotificationConfigs`).Do()
+	// ["eventNotificationConfigs","stateNotificationConfig.pubsub_topic_name","mqttConfig.mqtt_enabled_state","httpConfig.http_enabled_state","logLevel","credentials"]
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -568,17 +579,19 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 
 	tflog.Debug(ctx, "device registry updated")
 
+	// Fetch updated registry value from ClearBlade IoT Core
+	registry, err := r.client.Projects.Locations.Registries.Get(parent).Do()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading ClearBlade IoT Core Registry",
+			"Could not read ClearBlade IoT Core registry ID "+plan.Name.ValueString()+": "+err.Error(),
+		)
+		return
+	}
+
 	// Update registry resource - Map response body to schema and populate Computed attribute values
 	plan.Name = types.StringValue(registry.Name)
 	plan.LogLevel = types.StringValue(registry.LogLevel)
-
-	plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
-	for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-		plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
-			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
-			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
-		})
-	}
 
 	if plan.StateNotificationConfig.IsNull() {
 		attributes := map[string]attr.Value{
@@ -614,6 +627,20 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 			"http_enabled_state": types.StringValue(registry.HttpConfig.HttpEnabledState),
 		}
 		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
+	}
+
+	if !(plan.EventNotificationConfigs == nil || (reflect.ValueOf(plan.EventNotificationConfigs).Kind() == reflect.Ptr && reflect.ValueOf(plan.EventNotificationConfigs).IsNil())) {
+		plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
+		for _, eventNotificationConfig := range registry.EventNotificationConfigs {
+			tflog.Debug(ctx, "registry update event 2")
+			// ctx = tflog.SetField(ctx, "registry update event 2 notify pubsub topic", types.StringValue(registry.LogLevel))
+			// ctx = tflog.SetField(ctx, "registry update event 2 notify pubsub topic", types.StringValue(eventNotificationConfig.PubsubTopicName))
+			// ctx = tflog.SetField(ctx, "registry update event 2 notify subfolder matches", types.StringValue(eventNotificationConfig.SubfolderMatches))
+			plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
+				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
+				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
+			})
+		}
 	}
 
 	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
@@ -670,6 +697,7 @@ func (r *deviceRegistryResource) Delete(ctx context.Context, req resource.Delete
 
 func (r *deviceRegistryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Retrieve import ID and save to id attribute
+	tflog.Debug(ctx, "registry import event")
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
