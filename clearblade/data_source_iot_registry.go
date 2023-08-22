@@ -185,7 +185,7 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 
 	tflog.Info(ctx, "requesting device registry listing from Clearblade IoT Core")
 	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"))
-	device_registries, err := d.client.Projects.Locations.Registries.List(parent).Do()
+	registries, err := d.client.Projects.Locations.Registries.List(parent).Do()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to read Clearblade IoT Core device registries. Make sure your credentials are correct and you have access "+
@@ -195,26 +195,26 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 		return
 	}
 	tflog.Info(ctx, "device registry")
-	tflog.Info(ctx, strconv.Itoa(len(device_registries.DeviceRegistries)))
+	tflog.Info(ctx, strconv.Itoa(len(registries.DeviceRegistries)))
 
 	// Map response body to model
-	for _, device_registry := range device_registries.DeviceRegistries {
+	for _, registry := range registries.DeviceRegistries {
 		registryState := deviceRegistriesModel{
+			ID:       types.StringValue(registry.Id),
+			LogLevel: types.StringValue(registry.LogLevel),
 			HttpConfig: HttpConfigModel{
-				HttpEnabledState: types.StringValue(device_registry.HttpConfig.HttpEnabledState),
+				HttpEnabledState: types.StringValue(registry.HttpConfig.HttpEnabledState),
 			},
-			ID:       types.StringValue(device_registry.Id),
-			LogLevel: types.StringValue(device_registry.LogLevel),
 			MqttConfig: MqttConfigModel{
-				MqttEnabledState: types.StringValue(device_registry.MqttConfig.MqttEnabledState),
+				MqttEnabledState: types.StringValue(registry.MqttConfig.MqttEnabledState),
 			},
-			Name: types.StringValue(device_registry.Name),
+			Name: types.StringValue(registry.Name),
 			StateNotificationConfig: StateNotificationConfigModel{
-				PubsubTopicName: types.StringValue(device_registry.StateNotificationConfig.PubsubTopicName),
+				PubsubTopicName: types.StringValue(registry.StateNotificationConfig.PubsubTopicName),
 			},
 		}
 
-		for _, credential := range device_registry.Credentials {
+		for _, credential := range registry.Credentials {
 			registryState.Credentials = append(registryState.Credentials, CredentialsModel{
 				PublicKeyCertificate: publicKeyCertificateModel{
 					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
@@ -231,7 +231,7 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 			})
 		}
 
-		for _, eventNotificationConfig := range device_registry.EventNotificationConfigs {
+		for _, eventNotificationConfig := range registry.EventNotificationConfigs {
 			registryState.EventNotificationConfigs = append(registryState.EventNotificationConfigs, EventNotificationConfigsModel{
 				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
