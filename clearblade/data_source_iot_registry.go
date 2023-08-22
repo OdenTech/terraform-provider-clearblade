@@ -72,16 +72,18 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 							Computed: true,
 						},
 						"event_notification_configs": schema.ListNestedAttribute{
-							Computed: true,
+							Optional: true,
+							// Computed: true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
-									"subfolder_matches": schema.StringAttribute{
-										Description: "This field is used only for telemetry events; subfolders are not supported for state changes.",
-										Computed:    true,
-									},
 									"pubsub_topic_name": schema.StringAttribute{
+										Required:    true,
 										Description: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
+									},
+									"sub_folder_matches": schema.StringAttribute{
+										Optional:    true,
 										Computed:    true,
+										Description: "This field is used only for telemetry events; subfolders are not supported for state changes.",
 									},
 								},
 							},
@@ -121,6 +123,7 @@ func (d *deviceRegistriesDataSource) Schema(_ context.Context, _ datasource.Sche
 							Computed:    true,
 						},
 						"credentials": schema.ListNestedAttribute{
+							Optional: true,
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
