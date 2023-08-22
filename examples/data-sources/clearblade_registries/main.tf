@@ -7,19 +7,11 @@ terraform {
     }
   }
 }
-
-provider "clearblade" {
-  # Configuration options
-  credentials = var.clearblade-creds
-  project     = var.gcp_project_id
-  region      = var.gcp_region
-}
-
 # List all registries
-data "all_registries" "example" {
+data "clearblade_registries" "example" {
 
 }
 
 output "all_registries" {
-  value = data.all_registries.example
+  value = data.clearblade_registries.example
 }
