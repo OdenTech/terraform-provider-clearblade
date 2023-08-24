@@ -74,6 +74,8 @@ func (d *devicesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 func (d *devicesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state devicesDataSourceModel
 
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+
 	tflog.Info(ctx, "requesting device listing from Clearblade IoT Core")
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), state.Registry.ValueString())
 	devices, err := d.client.Projects.Locations.Registries.Devices.List(parent).Do()
@@ -85,10 +87,19 @@ func (d *devicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		)
 		return
 	}
-	tflog.Info(ctx, "device length")
-	tflog.Info(ctx, strconv.Itoa(len(devices.Devices)))
+
+	ctx = tflog.SetField(ctx, "device length", strconv.Itoa(len(devices.Devices)))
 
 	// Map response body to model
+	for _, device := range devices.Devices {
+		deviceState := devicesModel{
+			ID:    types.StringValue(device.Id),
+			Name:  types.StringValue(device.Name),
+			NumID: types.StringValue(strconv.FormatUint(device.NumId, 10)),
+		}
+
+		state.Devices = append(state.Devices, deviceState)
+	}
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
