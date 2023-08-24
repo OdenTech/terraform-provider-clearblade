@@ -14,7 +14,7 @@ description: |-
 terraform {
   required_providers {
     clearblade = {
-      version = "0.2.4"
+      version = "0.2.5"
       source  = "ClearBlade/clearblade"
     }
   }

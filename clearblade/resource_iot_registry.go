@@ -39,7 +39,8 @@ type deviceRegistryResourceModel struct {
 	MqttConfig               types.Object                    `tfsdk:"mqtt_config"`
 	HttpConfig               types.Object                    `tfsdk:"http_config"`
 	LogLevel                 types.String                    `tfsdk:"log_level"`
-	Credentials              []CredentialsModel              `tfsdk:"credentials"`
+	Credentials              types.Set                       `tfsdk:"credentials"`
+	// Credentials              []CredentialsModel              `tfsdk:"credentials"`
 	// Region                   types.String                    `tfsdk:"region"`
 	// Project                  types.String                    `tfsdk:"project"`
 	// LastUpdated              types.String                    `tfsdk:"last_updated"`
@@ -75,10 +76,10 @@ var HttpConfigModelTypes = map[string]attr.Type{
 }
 
 type CredentialsModel struct {
-	PublicKeyCertificate publicKeyCertificateModel `tfsdk:"public_key_certificate"`
+	PublicKeyCertificate PublicKeyCertificateModel `tfsdk:"public_key_certificate"`
 }
 
-type publicKeyCertificateModel struct {
+type PublicKeyCertificateModel struct {
 	Format      types.String                `tfsdk:"format"`
 	Certificate types.String                `tfsdk:"certificate"`
 	X509Details X509CertificateDetailsModel `tfsdk:"x509_details"`
@@ -141,8 +142,8 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 				},
 			},
 			"state_notification_config": schema.SingleNestedAttribute{
-				Optional: true,
-				// Computed:            true,
+				Optional:            true,
+				Computed:            true,
 				MarkdownDescription: "The configuration for notification of new states received from the device.",
 				Attributes: map[string]schema.Attribute{
 					"pubsub_topic_name": schema.StringAttribute{
@@ -189,9 +190,9 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 					),
 				},
 			},
-			"credentials": schema.ListNestedAttribute{
-				Optional:            true,
-				Computed:            true,
+			"credentials": schema.SetNestedAttribute{
+				Optional: true,
+				// Computed:            true,
 				MarkdownDescription: "List of public key certificates to authenticate devices.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -269,8 +270,10 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	defer cancel()
 
 	// Generate API request body from plan
+	var credentialsModel []CredentialsModel
+	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
 	credentials := []*iot.RegistryCredential{}
-	for _, v := range plan.Credentials {
+	for _, v := range credentialsModel {
 		credentials = append(credentials, &iot.RegistryCredential{
 			PublicKeyCertificate: &iot.PublicKeyCertificate{
 				Format:      v.PublicKeyCertificate.Format.ValueString(),
@@ -289,9 +292,6 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	event_notification_configs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
-		tflog.Debug(ctx, "registry create event 1")
-		ctx = tflog.SetField(ctx, "registry create event notify pubsub topic", v.PubsubTopicName.ValueString())
-		ctx = tflog.SetField(ctx, "registry create event notify subfolder matches", v.SubfolderMatches.ValueString())
 		event_notification_configs = append(event_notification_configs, &iot.EventNotificationConfig{
 			PubsubTopicName:  v.PubsubTopicName.ValueString(),
 			SubfolderMatches: v.SubfolderMatches.ValueString(),
@@ -322,6 +322,9 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		},
 	}
 
+	payloadString := fmt.Sprintf("%+v", createRequestPayload)
+	ctx = tflog.SetField(ctx, "create payload in CREATE", payloadString)
+
 	// Create a new device registry resource on ClearBlade IoT Core
 	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"))
 	registry, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
@@ -341,9 +344,6 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
 	for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-		tflog.Debug(ctx, "registry create event 2")
-		ctx = tflog.SetField(ctx, "registry create event notify pubsub topic", types.StringValue(eventNotificationConfig.PubsubTopicName))
-		ctx = tflog.SetField(ctx, "registry create event notify subfolder matches", types.StringValue(eventNotificationConfig.SubfolderMatches))
 		plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
 			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
@@ -388,11 +388,16 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
 	}
 
-	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
-		plan.Credentials = []CredentialsModel{}
+	if plan.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - CREATE")
+		plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
+	} else {
+		tflog.Debug(ctx, "value detected NOT NULL - CREATE")
+		var credentials []CredentialsModel
+
 		for _, credential := range registry.Credentials {
-			plan.Credentials = append(plan.Credentials, CredentialsModel{
-				PublicKeyCertificate: publicKeyCertificateModel{
+			m := CredentialsModel{
+				PublicKeyCertificate: PublicKeyCertificateModel{
 					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
 					X509Details: X509CertificateDetailsModel{
@@ -404,8 +409,10 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
 					},
 				},
-			})
+			}
+			credentials = append(credentials, m)
 		}
+		plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
 	}
 
 	// Set state to fully populated data
@@ -446,9 +453,6 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 
 	state.EventNotificationConfigs = []EventNotificationConfigsModel{}
 	for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-		tflog.Debug(ctx, "registry read event 1")
-		ctx = tflog.SetField(ctx, "registry read event 1 notify pubsub topic", types.StringValue(eventNotificationConfig.PubsubTopicName))
-		ctx = tflog.SetField(ctx, "registry read event 1 notify subfolder matches", types.StringValue(eventNotificationConfig.SubfolderMatches))
 		state.EventNotificationConfigs = append(state.EventNotificationConfigs, EventNotificationConfigsModel{
 			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
@@ -467,22 +471,31 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 		"http_enabled_state": types.StringValue(registry.HttpConfig.HttpEnabledState),
 	})
 
-	state.Credentials = []CredentialsModel{}
-	for _, credential := range registry.Credentials {
-		state.Credentials = append(state.Credentials, CredentialsModel{
-			PublicKeyCertificate: publicKeyCertificateModel{
-				Format:      types.StringValue(credential.PublicKeyCertificate.Format),
-				Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-				X509Details: X509CertificateDetailsModel{
-					Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-					Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-					StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+	if state.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - READ")
+		state.Credentials = types.SetNull(state.Credentials.ElementType(ctx))
+	} else {
+		tflog.Debug(ctx, "value detected KNOWN - READ")
+		var credentials []CredentialsModel
+
+		for _, credential := range registry.Credentials {
+			m := CredentialsModel{
+				PublicKeyCertificate: PublicKeyCertificateModel{
+					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
+					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
+					X509Details: X509CertificateDetailsModel{
+						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+					},
 				},
-			},
-		})
+			}
+			credentials = append(credentials, m)
+		}
+		state.Credentials, _ = types.SetValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
 	}
 
 	// Set refreshed state
@@ -507,9 +520,12 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Generate API request body from plan
-	// ctx = tflog.SetField(ctx, "registry update length plan credentials", len(plan.Credentials))
+	var credentialsModel []CredentialsModel
+	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+
+	// Generate API request body from plan
 	credentials := []*iot.RegistryCredential{}
-	for _, v := range plan.Credentials {
+	for _, v := range credentialsModel {
 		credentials = append(credentials, &iot.RegistryCredential{
 			PublicKeyCertificate: &iot.PublicKeyCertificate{
 				Format:      v.PublicKeyCertificate.Format.ValueString(),
@@ -560,6 +576,9 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 		},
 		LogLevel: plan.LogLevel.ValueString(),
 	}
+
+	payloadString := fmt.Sprintf("%+v", updateRequestPayload)
+	ctx = tflog.SetField(ctx, "create payload in UPDATE", payloadString)
 
 	// Update an existing registry
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.ID.ValueString())
@@ -629,13 +648,12 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
 	}
 
-	if !(plan.EventNotificationConfigs == nil || (reflect.ValueOf(plan.EventNotificationConfigs).Kind() == reflect.Ptr && reflect.ValueOf(plan.EventNotificationConfigs).IsNil())) {
+	if plan.EventNotificationConfigs == nil || (reflect.ValueOf(plan.EventNotificationConfigs).Kind() == reflect.Ptr && reflect.ValueOf(plan.EventNotificationConfigs).IsNil()) {
+
+	} else {
+
 		plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
 		for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-			tflog.Debug(ctx, "registry update event 2")
-			// ctx = tflog.SetField(ctx, "registry update event 2 notify pubsub topic", types.StringValue(registry.LogLevel))
-			// ctx = tflog.SetField(ctx, "registry update event 2 notify pubsub topic", types.StringValue(eventNotificationConfig.PubsubTopicName))
-			// ctx = tflog.SetField(ctx, "registry update event 2 notify subfolder matches", types.StringValue(eventNotificationConfig.SubfolderMatches))
 			plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
 				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
@@ -643,11 +661,18 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 		}
 	}
 
-	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
-		plan.Credentials = []CredentialsModel{}
+	if plan.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - UPDATE")
+		plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
+	}
+
+	if plan.Credentials.IsUnknown() {
+		tflog.Debug(ctx, "value detected UNKNOWN - UPDATE")
+		var credentials []CredentialsModel
+
 		for _, credential := range registry.Credentials {
-			plan.Credentials = append(plan.Credentials, CredentialsModel{
-				PublicKeyCertificate: publicKeyCertificateModel{
+			m := CredentialsModel{
+				PublicKeyCertificate: PublicKeyCertificateModel{
 					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
 					X509Details: X509CertificateDetailsModel{
@@ -659,8 +684,10 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
 					},
 				},
-			})
+			}
+			credentials = append(credentials, m)
 		}
+		plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
 	}
 
 	diags = resp.State.Set(ctx, plan)

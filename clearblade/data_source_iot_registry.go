@@ -219,7 +219,7 @@ func (d *deviceRegistriesDataSource) Read(ctx context.Context, req datasource.Re
 
 		for _, credential := range registry.Credentials {
 			registryState.Credentials = append(registryState.Credentials, CredentialsModel{
-				PublicKeyCertificate: publicKeyCertificateModel{
+				PublicKeyCertificate: PublicKeyCertificateModel{
 					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
 					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
 					X509Details: X509CertificateDetailsModel{
