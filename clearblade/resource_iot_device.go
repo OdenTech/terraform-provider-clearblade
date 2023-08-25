@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
+	"regexp"
 	"strconv"
 
 	"github.com/clearblade/go-iot"
@@ -38,24 +38,25 @@ type deviceResource struct {
 }
 
 type deviceResourceModel struct {
-	ID                 types.String             `tfsdk:"id"`
-	Name               types.String             `tfsdk:"name"`
-	NumID              types.String             `tfsdk:"num_id"`
-	Credentials        []DeviceCredentialsModel `tfsdk:"credentials"`
-	LastHeartbeatTime  types.String             `tfsdk:"last_heartbeat_time"`
-	LastEventTime      types.String             `tfsdk:"last_event_time"`
-	LastStateTime      types.String             `tfsdk:"last_state_time"`
-	LastConfigAckTime  types.String             `tfsdk:"last_config_ack_time"`
-	LastConfigSendTime types.String             `tfsdk:"last_config_send_time"`
-	Blocked            types.Bool               `tfsdk:"blocked"`
-	LastErrorTime      types.String             `tfsdk:"last_error_time"`
-	LastErrorStatus    types.Object             `tfsdk:"last_error_status"`
-	Config             types.Object             `tfsdk:"config"`
-	State              types.Object             `tfsdk:"state"`
-	LogLevel           types.String             `tfsdk:"log_level"`
-	Metadata           types.Map                `tfsdk:"metadata"`
-	GatewayConfig      types.Object             `tfsdk:"gateway_config"`
-	Registry           types.String             `tfsdk:"registry"`
+	ID          types.String `tfsdk:"id"`
+	Name        types.String `tfsdk:"name"`
+	NumID       types.String `tfsdk:"num_id"`
+	Credentials types.List   `tfsdk:"credentials"`
+	// Credentials        []DeviceCredentialsModel `tfsdk:"credentials"`
+	LastHeartbeatTime  types.String `tfsdk:"last_heartbeat_time"`
+	LastEventTime      types.String `tfsdk:"last_event_time"`
+	LastStateTime      types.String `tfsdk:"last_state_time"`
+	LastConfigAckTime  types.String `tfsdk:"last_config_ack_time"`
+	LastConfigSendTime types.String `tfsdk:"last_config_send_time"`
+	Blocked            types.Bool   `tfsdk:"blocked"`
+	LastErrorTime      types.String `tfsdk:"last_error_time"`
+	LastErrorStatus    types.Object `tfsdk:"last_error_status"`
+	Config             types.Object `tfsdk:"config"`
+	State              types.Object `tfsdk:"state"`
+	LogLevel           types.String `tfsdk:"log_level"`
+	Metadata           types.Map    `tfsdk:"metadata"`
+	GatewayConfig      types.Object `tfsdk:"gateway_config"`
+	Registry           types.String `tfsdk:"registry"`
 }
 
 type DeviceCredentialsModel struct {
@@ -374,9 +375,21 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	if !plan.Credentials.IsNull() {
+		if len(plan.Credentials.Elements()) <= 0 {
+			resp.Diagnostics.AddError(
+				"Invalid Credentials Value",
+				"A null or empty list/set value was set in the template",
+			)
+			return
+		}
+	}
+
 	// Generate API request body from plan
+	var credentialsModel []DeviceCredentialsModel
+	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
 	credentials := []*iot.DeviceCredential{}
-	for _, v := range plan.Credentials {
+	for _, v := range credentialsModel {
 		credentials = append(credentials, &iot.DeviceCredential{
 			ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
 			PublicKey: &iot.PublicKeyCredential{
@@ -432,6 +445,12 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	plan.NumID = types.StringValue(strconv.FormatUint(device.NumId, 10))
 	plan.Blocked = types.BoolValue(device.Blocked)
 	plan.LogLevel = types.StringValue(device.LogLevel)
+
+	// attributes := map[string]attr.Value{
+	// 	"update_time": types.StringValue(device.State.UpdateTime),
+	// 	"binary_data": types.StringValue(device.State.BinaryData),
+	// }
+	// plan.State = types.ObjectValueMust(StateModelTypes, attributes)
 
 	if plan.State.IsNull() {
 		attributes := map[string]attr.Value{
@@ -497,10 +516,16 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		plan.Config = types.ObjectValueMust(ConfigModelTypes, attributes)
 	}
 
-	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
-		plan.Credentials = []DeviceCredentialsModel{}
+	if plan.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - CREATE")
+		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
+	}
+
+	if plan.Credentials.IsUnknown() {
+		var credentials []DeviceCredentialsModel
+
 		for _, credential := range device.Credentials {
-			plan.Credentials = append(plan.Credentials, DeviceCredentialsModel{
+			m := DeviceCredentialsModel{
 				PublicKeyCertificate: DevicePublicKeyCertificateModel{
 					ExpirationTime: types.StringValue(credential.ExpirationTime),
 					PublicKey: PublicKeyModel{
@@ -508,17 +533,50 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 						Key:    types.StringValue(credential.PublicKey.Key),
 					},
 				},
-			})
+			}
+			credentials = append(credentials, m)
 		}
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+
 	}
 
-	attributes := map[string]attr.Value{}
-	for k, v := range device.Metadata {
-		s, _ := strconv.Unquote(v)
-		attributes[k] = types.StringValue(s)
+	if !plan.Credentials.IsUnknown() && !plan.Credentials.IsNull() {
+		var credentials []DeviceCredentialsModel
+
+		for _, credential := range device.Credentials {
+			m := DeviceCredentialsModel{
+				PublicKeyCertificate: DevicePublicKeyCertificateModel{
+					ExpirationTime: types.StringValue(credential.ExpirationTime),
+					PublicKey: PublicKeyModel{
+						Format: types.StringValue(credential.PublicKey.Format),
+						Key:    types.StringValue(credential.PublicKey.Key),
+					},
+				},
+			}
+			credentials = append(credentials, m)
+		}
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+
 	}
-	ctx = tflog.SetField(ctx, "state attributes", attributes)
-	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
+
+	if plan.Metadata.IsNull() {
+		plan.Metadata = types.MapNull(plan.Metadata.ElementType(ctx))
+	} else {
+		attributes := map[string]attr.Value{}
+		for k, v := range device.Metadata {
+			s, _ := strconv.Unquote(v)
+			ctx = tflog.SetField(ctx, "state attributes", s)
+			attributes[k] = types.StringValue(s)
+		}
+		// str := fmt.Sprintf("%+v", device.Metadata)
+		// str, err := json.Marshal(device.Metadata)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		plan.Metadata, _ = types.MapValueFrom(ctx, plan.Metadata.ElementType(ctx), attributes)
+	}
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -542,6 +600,14 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	// Get refreshed device detail from ClearBlade IoT Core
+	str := state.ID.ValueString()
+	re := regexp.MustCompile(`/`)
+	slice := re.Split(str, -1)
+	if len(slice) > 1 {
+		state.Registry = types.StringValue(slice[0])
+		state.ID = types.StringValue(slice[1])
+	}
+
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s/devices/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), state.Registry.ValueString(), state.ID.ValueString())
 	device, err := r.client.Projects.Locations.Registries.Devices.Get(parent).Do()
 	if err != nil {
@@ -631,14 +697,22 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 	attributes := map[string]attr.Value{}
 	for k, v := range device.Metadata {
 		s, _ := strconv.Unquote(v)
+		ctx = tflog.SetField(ctx, "state attributes ll", s)
+		tflog.Debug(ctx, "state attributes read")
 		attributes[k] = types.StringValue(s)
 	}
-	state.Metadata = types.MapValueMust(state.Metadata.ElementType(ctx), attributes)
+	state.Metadata, _ = types.MapValueFrom(ctx, state.Metadata.ElementType(ctx), attributes)
 
-	if !(state.Credentials == nil || (reflect.ValueOf(state.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(state.Credentials).IsNil())) {
-		state.Credentials = []DeviceCredentialsModel{}
+	if state.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - READ")
+		state.Credentials = types.ListNull(state.Credentials.ElementType(ctx))
+		// state.Credentials = types.SetNull(state.Credentials.ElementType(ctx))
+	} else {
+		tflog.Debug(ctx, "value detected KNOWN - READ")
+		var credentials []DeviceCredentialsModel
+
 		for _, credential := range device.Credentials {
-			state.Credentials = append(state.Credentials, DeviceCredentialsModel{
+			m := DeviceCredentialsModel{
 				PublicKeyCertificate: DevicePublicKeyCertificateModel{
 					ExpirationTime: types.StringValue(credential.ExpirationTime),
 					PublicKey: PublicKeyModel{
@@ -646,8 +720,11 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 						Key:    types.StringValue(credential.PublicKey.Key),
 					},
 				},
-			})
+			}
+			credentials = append(credentials, m)
 		}
+		state.Credentials, _ = types.ListValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
 	}
 
 	// Set refreshed state
@@ -671,9 +748,21 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
+	if !plan.Credentials.IsNull() {
+		if len(plan.Credentials.Elements()) <= 0 {
+			resp.Diagnostics.AddError(
+				"Invalid Credentials Value",
+				"A null or empty list/set value was set in the template",
+			)
+			return
+		}
+	}
+
 	// Generate API request body from plan
+	var credentialsModel []DeviceCredentialsModel
+	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
 	credentials := []*iot.DeviceCredential{}
-	for _, v := range plan.Credentials {
+	for _, v := range credentialsModel {
 		credentials = append(credentials, &iot.DeviceCredential{
 			ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
 			PublicKey: &iot.PublicKeyCredential{
@@ -803,10 +892,16 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 	plan.Metadata = types.MapValueMust(plan.Metadata.ElementType(ctx), attributes)
 
-	if !(plan.Credentials == nil || (reflect.ValueOf(plan.Credentials).Kind() == reflect.Ptr && reflect.ValueOf(plan.Credentials).IsNil())) {
-		plan.Credentials = []DeviceCredentialsModel{}
+	if plan.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - CREATE")
+		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
+	}
+
+	if plan.Credentials.IsUnknown() {
+		var credentials []DeviceCredentialsModel
+
 		for _, credential := range device.Credentials {
-			plan.Credentials = append(plan.Credentials, DeviceCredentialsModel{
+			m := DeviceCredentialsModel{
 				PublicKeyCertificate: DevicePublicKeyCertificateModel{
 					ExpirationTime: types.StringValue(credential.ExpirationTime),
 					PublicKey: PublicKeyModel{
@@ -814,8 +909,32 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 						Key:    types.StringValue(credential.PublicKey.Key),
 					},
 				},
-			})
+			}
+			credentials = append(credentials, m)
 		}
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+
+	}
+
+	if !plan.Credentials.IsUnknown() && !plan.Credentials.IsNull() {
+		var credentials []DeviceCredentialsModel
+
+		for _, credential := range device.Credentials {
+			m := DeviceCredentialsModel{
+				PublicKeyCertificate: DevicePublicKeyCertificateModel{
+					ExpirationTime: types.StringValue(credential.ExpirationTime),
+					PublicKey: PublicKeyModel{
+						Format: types.StringValue(credential.PublicKey.Format),
+						Key:    types.StringValue(credential.PublicKey.Key),
+					},
+				},
+			}
+			credentials = append(credentials, m)
+		}
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+
 	}
 
 	// Set state to fully populated data
