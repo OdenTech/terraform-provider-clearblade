@@ -375,28 +375,21 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	if !plan.Credentials.IsNull() {
-		if len(plan.Credentials.Elements()) <= 0 {
-			resp.Diagnostics.AddError(
-				"Invalid Credentials Value",
-				"A null or empty list/set value was set in the template",
-			)
-			return
-		}
-	}
-
 	// Generate API request body from plan
-	var credentialsModel []DeviceCredentialsModel
-	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
 	credentials := []*iot.DeviceCredential{}
-	for _, v := range credentialsModel {
-		credentials = append(credentials, &iot.DeviceCredential{
-			ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
-			PublicKey: &iot.PublicKeyCredential{
-				Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
-				Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
-			},
-		})
+	if len(plan.Credentials.Elements()) > 0 {
+		var credentialsModel []DeviceCredentialsModel
+		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+
+		for _, v := range credentialsModel {
+			credentials = append(credentials, &iot.DeviceCredential{
+				ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
+				PublicKey: &iot.PublicKeyCredential{
+					Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
+					Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
+				},
+			})
+		}
 	}
 
 	var gatewayConfigModel GatewayConfigModel
@@ -748,28 +741,21 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	if !plan.Credentials.IsNull() {
-		if len(plan.Credentials.Elements()) <= 0 {
-			resp.Diagnostics.AddError(
-				"Invalid Credentials Value",
-				"A null or empty list/set value was set in the template",
-			)
-			return
-		}
-	}
-
 	// Generate API request body from plan
-	var credentialsModel []DeviceCredentialsModel
-	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
 	credentials := []*iot.DeviceCredential{}
-	for _, v := range credentialsModel {
-		credentials = append(credentials, &iot.DeviceCredential{
-			ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
-			PublicKey: &iot.PublicKeyCredential{
-				Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
-				Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
-			},
-		})
+	if len(plan.Credentials.Elements()) > 0 {
+		var credentialsModel []DeviceCredentialsModel
+		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+
+		for _, v := range credentialsModel {
+			credentials = append(credentials, &iot.DeviceCredential{
+				ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
+				PublicKey: &iot.PublicKeyCredential{
+					Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
+					Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
+				},
+			})
+		}
 	}
 
 	var gatewayConfigModel GatewayConfigModel
