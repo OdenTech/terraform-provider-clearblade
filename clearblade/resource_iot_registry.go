@@ -39,7 +39,8 @@ type deviceRegistryResourceModel struct {
 	MqttConfig               types.Object                    `tfsdk:"mqtt_config"`
 	HttpConfig               types.Object                    `tfsdk:"http_config"`
 	LogLevel                 types.String                    `tfsdk:"log_level"`
-	Credentials              types.Set                       `tfsdk:"credentials"`
+	Credentials              types.List                      `tfsdk:"credentials"`
+	// Credentials              types.Set                       `tfsdk:"credentials"`
 	// Credentials              []CredentialsModel              `tfsdk:"credentials"`
 	// Region                   types.String                    `tfsdk:"region"`
 	// Project                  types.String                    `tfsdk:"project"`
@@ -190,9 +191,9 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 					),
 				},
 			},
-			"credentials": schema.SetNestedAttribute{
-				Optional: true,
-				// Computed:            true,
+			"credentials": schema.ListNestedAttribute{
+				// "credentials": schema.SetNestedAttribute{
+				Optional:            true,
 				MarkdownDescription: "List of public key certificates to authenticate devices.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -256,6 +257,16 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if !plan.Credentials.IsNull() {
+		if len(plan.Credentials.Elements()) <= 0 {
+			resp.Diagnostics.AddError(
+				"Invalid Credentials Value",
+				"A null or empty list/set value was set in the template",
+			)
+			return
+		}
 	}
 
 	createTimeout, diags := plan.Timeouts.Create(ctx, 60*time.Minute)
@@ -390,9 +401,16 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	if plan.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - CREATE")
-		plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
-	} else {
-		tflog.Debug(ctx, "value detected NOT NULL - CREATE")
+		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
+		// plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
+	}
+
+	if plan.Credentials.IsUnknown() {
+		tflog.Debug(ctx, "value detected UNKNOWN - CREATE")
+
+		registryString := fmt.Sprintf("%+v", registry.Credentials)
+		ctx = tflog.SetField(ctx, "registryString - CREATE", registryString)
+
 		var credentials []CredentialsModel
 
 		for _, credential := range registry.Credentials {
@@ -412,7 +430,47 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 			}
 			credentials = append(credentials, m)
 		}
-		plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+	}
+
+	if !plan.Credentials.IsUnknown() && !plan.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected KNOWN - CREATE")
+
+		registryString := fmt.Sprintf("%+v", len(registry.Credentials))
+		ctx = tflog.SetField(ctx, "length registryString - CREATE", registryString)
+
+		var credentials []CredentialsModel
+
+		for _, credential := range registry.Credentials {
+			m := CredentialsModel{
+				PublicKeyCertificate: PublicKeyCertificateModel{
+					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
+					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
+					X509Details: X509CertificateDetailsModel{
+						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+					},
+				},
+			}
+			credentials = append(credentials, m)
+		}
+		if credentials == nil {
+			tflog.Debug(ctx, "nil value detected - CREATE")
+			resp.Diagnostics.AddError(
+				"Error",
+				"Null list was set in the template",
+			)
+			return
+		} else {
+			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		}
+
 	}
 
 	// Set state to fully populated data
@@ -473,7 +531,8 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 
 	if state.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - READ")
-		state.Credentials = types.SetNull(state.Credentials.ElementType(ctx))
+		state.Credentials = types.ListNull(state.Credentials.ElementType(ctx))
+		// state.Credentials = types.SetNull(state.Credentials.ElementType(ctx))
 	} else {
 		tflog.Debug(ctx, "value detected KNOWN - READ")
 		var credentials []CredentialsModel
@@ -495,7 +554,8 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 			}
 			credentials = append(credentials, m)
 		}
-		state.Credentials, _ = types.SetValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
+		state.Credentials, _ = types.ListValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
+		// state.Credentials, _ = types.SetValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
 	}
 
 	// Set refreshed state
@@ -517,6 +577,16 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if !plan.Credentials.IsNull() {
+		if len(plan.Credentials.Elements()) <= 0 {
+			resp.Diagnostics.AddError(
+				"Invalid Credentials Value",
+				"A null or empty list/set value was set in the template",
+			)
+			return
+		}
 	}
 
 	// Generate API request body from plan
@@ -663,7 +733,8 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 
 	if plan.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - UPDATE")
-		plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
+		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
+		// plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
 	}
 
 	if plan.Credentials.IsUnknown() {
@@ -687,7 +758,8 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 			}
 			credentials = append(credentials, m)
 		}
-		plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
 	}
 
 	diags = resp.State.Set(ctx, plan)
