@@ -259,16 +259,6 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	if !plan.Credentials.IsNull() {
-		if len(plan.Credentials.Elements()) <= 0 {
-			resp.Diagnostics.AddError(
-				"Invalid Credentials Value",
-				"A null or empty list/set value was set in the template",
-			)
-			return
-		}
-	}
-
 	createTimeout, diags := plan.Timeouts.Create(ctx, 60*time.Minute)
 
 	resp.Diagnostics.Append(diags...)
@@ -281,24 +271,27 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	defer cancel()
 
 	// Generate API request body from plan
-	var credentialsModel []CredentialsModel
-	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
 	credentials := []*iot.RegistryCredential{}
-	for _, v := range credentialsModel {
-		credentials = append(credentials, &iot.RegistryCredential{
-			PublicKeyCertificate: &iot.PublicKeyCertificate{
-				Format:      v.PublicKeyCertificate.Format.ValueString(),
-				Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
-				X509Details: &iot.X509CertificateDetails{
-					Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
-					Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
-					StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
-					ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
-					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
-					PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+	if len(plan.Credentials.Elements()) > 0 {
+
+		var credentialsModel []CredentialsModel
+		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		for _, v := range credentialsModel {
+			credentials = append(credentials, &iot.RegistryCredential{
+				PublicKeyCertificate: &iot.PublicKeyCertificate{
+					Format:      v.PublicKeyCertificate.Format.ValueString(),
+					Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
+					X509Details: &iot.X509CertificateDetails{
+						Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
+						Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
+						StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
+						ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
+						SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
+						PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 
 	event_notification_configs := []*iot.EventNotificationConfig{}
@@ -579,37 +572,28 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	if !plan.Credentials.IsNull() {
-		if len(plan.Credentials.Elements()) <= 0 {
-			resp.Diagnostics.AddError(
-				"Invalid Credentials Value",
-				"A null or empty list/set value was set in the template",
-			)
-			return
-		}
-	}
-
-	// Generate API request body from plan
-	var credentialsModel []CredentialsModel
-	plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
-
 	// Generate API request body from plan
 	credentials := []*iot.RegistryCredential{}
-	for _, v := range credentialsModel {
-		credentials = append(credentials, &iot.RegistryCredential{
-			PublicKeyCertificate: &iot.PublicKeyCertificate{
-				Format:      v.PublicKeyCertificate.Format.ValueString(),
-				Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
-				X509Details: &iot.X509CertificateDetails{
-					Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
-					Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
-					StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
-					ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
-					SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
-					PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+	if len(plan.Credentials.Elements()) > 0 {
+		var credentialsModel []CredentialsModel
+		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+
+		for _, v := range credentialsModel {
+			credentials = append(credentials, &iot.RegistryCredential{
+				PublicKeyCertificate: &iot.PublicKeyCertificate{
+					Format:      v.PublicKeyCertificate.Format.ValueString(),
+					Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
+					X509Details: &iot.X509CertificateDetails{
+						Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
+						Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
+						StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
+						ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
+						SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
+						PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+					},
 				},
-			},
-		})
+			})
+		}
 	}
 
 	eventNotificationConfigs := []*iot.EventNotificationConfig{}
