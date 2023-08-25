@@ -454,11 +454,11 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		}
 		if credentials == nil {
 			tflog.Debug(ctx, "nil value detected - CREATE")
-			resp.Diagnostics.AddError(
-				"Error",
-				"Null list was set in the template",
-			)
-			return
+			// resp.Diagnostics.AddError(
+			// 	"Error",
+			// 	"Null list was set in the template",
+			// )
+			// return
 		} else {
 			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
 			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
