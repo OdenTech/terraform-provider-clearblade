@@ -83,7 +83,7 @@ var PublicKeyModelTypes = map[string]attr.Type{
 	"key":    types.StringType,
 }
 
-type lastErrorStatusModel struct {
+type LastErrorStatusModel struct {
 	Code types.Int64 `tfsdk:"code"`
 	// Details []detailsModel `tfsdk:"details"`
 	Message types.String `tfsdk:"message"`
@@ -94,14 +94,14 @@ var LastErrorStatusModelTypes = map[string]attr.Type{
 	"message": types.StringType,
 }
 
-type metadataModel struct {
+type MetadataModel struct {
 }
 
 var MetadataModelTypes = map[string]attr.Type{}
 
 // type detailsModel struct{}
 
-type configModel struct {
+type ConfigModel struct {
 	Version         types.Int64  `tfsdk:"version"`
 	CloudUpdateTime types.String `tfsdk:"cloud_update_time"`
 	DeviceAckTime   types.String `tfsdk:"device_ack_time"`
@@ -549,8 +549,12 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 			}
 			credentials = append(credentials, m)
 		}
-		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		if credentials == nil {
+			tflog.Debug(ctx, "Known value detected NULL - Credentials - CREATE")
+		} else {
+			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		}
 
 	}
 
@@ -918,8 +922,12 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 			}
 			credentials = append(credentials, m)
 		}
-		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		if credentials == nil {
+			tflog.Debug(ctx, "Known value detected NULL - Credentials - UPDATE")
+		} else {
+			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
+		}
 
 	}
 
