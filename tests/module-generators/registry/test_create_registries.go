@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func main() {
+func Create() {
 	numModules := 250
 
 	modules := [][]string{}
@@ -47,10 +47,16 @@ func main() {
 
 	datawriter.Flush()
 	file.Close()
+}
 
-	// Uncomment this code snippet to delete resources
-	// if err := os.Truncate("main.tf", 0); err != nil {
-	// 	log.Printf("Failed to truncate: %v", err)
-	// }
+func Delete() {
+	if err := os.Truncate("main.tf", 0); err != nil {
+		log.Printf("Failed to truncate: %v", err)
+	}
+}
 
+func main() {
+	Create()
+	// Comment the function call above and uncomment Delete below to delete resources
+	// Delete()
 }
