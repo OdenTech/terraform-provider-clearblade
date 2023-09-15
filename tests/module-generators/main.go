@@ -7,8 +7,8 @@ import (
 	"strconv"
 )
 
-func main() {
-	numModules := 10000
+func Create() {
+	numModules := 400
 
 	modules := [][]string{}
 
@@ -19,6 +19,14 @@ func main() {
 				"\tregistry_credentials 		= local.registry_credentials\n" +
 				"\tgcp_project                  = local.gcp_project\n" +
 				"\tgcp_region                   = local.gcp_region\n" +
+				"\tlog_level                    = \"your-log-level\"\n" +
+				"\tregistry_id                  = \"bas-" + strconv.Itoa(i+1) + "\"\n" +
+				"\tevent_topic_name             = \"projects/${local.gcp_project}/topics/your-topic-name\"\n" +
+				"\tevent_topic_name2            = \"projects/${local.gcp_project}/topics/your-topic-name\"\n" +
+				"\tevent_subfolder_matches      = \"your-path\"\n" +
+				"\tstate_topic_name             = \"projects/${local.gcp_project}/topics/your-state-name\"\n" +
+				"\tmqtt_enabled_state           = \"MQTT_ENABLED\"\n" +
+				"\thttp_enabled_state           = \"HTTP_DISABLED\"\n" +
 				"\tdevice_id                    = \"your-device-id\"\n" +
 				"\tdevice_log_level             = \"DEBUG\"\n" +
 				"\tdevice_blocked               = false \n" +
@@ -47,10 +55,16 @@ func main() {
 
 	datawriter.Flush()
 	file.Close()
+}
 
-	// Uncomment this code snippet to delete resources
-	// if err := os.Truncate("main.tf", 0); err != nil {
-	// 	log.Printf("Failed to truncate: %v", err)
-	// }
+func Delete() {
+	if err := os.Truncate("main.tf", 0); err != nil {
+		log.Printf("Failed to truncate: %v", err)
+	}
+}
 
+func main() {
+	Create()
+	// Comment the function call above and uncomment Delete below to delete resources
+	// Delete()
 }
