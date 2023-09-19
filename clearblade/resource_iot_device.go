@@ -216,7 +216,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"blocked": schema.BoolAttribute{
 				Description: "If a device is blocked, connections or requests from this device will fail.",
 				Optional:    true,
-				Computed:    true,
+				// Computed:    true,
 			},
 			"last_error_time": schema.StringAttribute{
 				Description: "The time the most recent error occurred, such as a failure to publish to Cloud Pub/Sub.",
@@ -224,12 +224,12 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"last_error_status": schema.SingleNestedAttribute{
 				Description: "The error message of the most recent error, such as a failure to publish to Cloud Pub/Sub.",
-				Optional:    true,
-				Computed:    true,
+				// Optional:    true,
+				Computed: true,
 				Attributes: map[string]schema.Attribute{
 					"code": schema.Int64Attribute{
-						Optional:    true,
-						Computed:    true,
+						Optional: true,
+						// Computed:    true,
 						Description: `The status code, which should be an enum value of google.rpc.Code.`,
 					},
 					// "details": schema.ListNestedAttribute{
@@ -244,41 +244,41 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					// 	},
 					// },
 					"message": schema.StringAttribute{
-						Optional:    true,
-						Computed:    true,
+						Optional: true,
+						// Computed:    true,
 						Description: `A developer-facing error message, which should be in English.`,
 					},
 				},
 			},
 			"config": schema.SingleNestedAttribute{
-				Optional:    true,
+				// Optional:    true,
 				Computed:    true,
 				Description: "The most recent device configuration, which is eventually sent from Cloud IoT Core to the device.",
 				Attributes: map[string]schema.Attribute{
 					"version": schema.Int64Attribute{
-						Optional:    true,
+						// Optional:    true,
 						Computed:    true,
 						Description: `The version of this update.`,
 					},
 					"cloud_update_time": schema.StringAttribute{
-						Optional:    true,
+						// Optional:    true,
 						Computed:    true,
 						Description: `The time at which this configuration version was updated in Cloud IoT Core.`,
 					},
 					"device_ack_time": schema.StringAttribute{
-						Optional:    true,
+						// Optional:    true,
 						Computed:    true,
 						Description: `The time at which Cloud IoT Core received the acknowledgment from the device, indicating that the device has received this configuration version.`,
 					},
 					"binary_data": schema.StringAttribute{
-						Optional:    true,
-						Computed:    true,
+						Optional: true,
+						// Computed:    true,
 						Description: `The device configuration data.`,
 					},
 				},
 			},
 			"state": schema.SingleNestedAttribute{
-				Optional:    true,
+				// Optional:    true,
 				Computed:    true,
 				Description: "The state most recently received from the device.",
 				Attributes: map[string]schema.Attribute{
@@ -296,7 +296,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"log_level": schema.StringAttribute{
 				Optional: true,
-				Computed: true,
+				// Computed: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(
 						"NONE",
@@ -311,16 +311,16 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"metadata": schema.MapAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
-				Computed:    true,
+				// Computed:    true,
 			},
 			"gateway_config": schema.SingleNestedAttribute{
-				Optional:    true,
-				Computed:    true,
+				Optional: true,
+				// Computed:    true,
 				Description: `Gateway-related configuration and state.`,
 				Attributes: map[string]schema.Attribute{
 					"gateway_type": schema.StringAttribute{
 						Optional: true,
-						Computed: true,
+						// Computed: true,
 						Validators: []validator.String{
 							stringvalidator.OneOf(
 								"GATEWAY",
@@ -332,7 +332,7 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					},
 					"gateway_auth_method": schema.StringAttribute{
 						Optional: true,
-						Computed: true,
+						// Computed: true,
 						Validators: []validator.String{
 							stringvalidator.OneOf(
 								"ASSOCIATION_ONLY",
@@ -343,12 +343,12 @@ func (r *deviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 						Description: `Indicates whether the device is a gateway. Possible values: ["ASSOCIATION_ONLY", "DEVICE_AUTH_TOKEN_ONLY", "ASSOCIATION_AND_DEVICE_AUTH_TOKEN"]`,
 					},
 					"last_accessed_gateway_id": schema.StringAttribute{
-						Optional:    true,
+						// Optional:    true,
 						Computed:    true,
 						Description: `The ID of the gateway the device accessed most recently.`,
 					},
 					"last_accessed_gateway_time": schema.StringAttribute{
-						Optional:    true,
+						// Optional:    true,
 						Computed:    true,
 						Description: `The most recent time at which the device accessed the gateway specified in last_accessed_gateway.`,
 					},
@@ -786,7 +786,8 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 			LastAccessedGatewayTime: gatewayConfigModel.LastAccessedGatewayTime.ValueString(),
 		},
 	}).
-		UpdateMask(`blocked,credentials,gatewayConfig,logLevel,metadata`).Do()
+		// UpdateMask(`blocked,credentials,logLevel,metadata`).Do()
+	UpdateMask(`blocked,credentials,gatewayConfig.gatewayAuthMethod,logLevel,metadata`).Do()
 	// Could not create a new device, unexpected error: googleapi: Error 400: The field mask 'updateMask' must contain mutable fields. The following fields are mutable: ["blocked","credentials","gatewayConfig.gatewayAuthMethod","logLevel","metadata"]
 
 	if err != nil {
