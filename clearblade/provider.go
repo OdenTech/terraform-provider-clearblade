@@ -2,9 +2,15 @@ package clearblade
 
 import (
 	"context"
+	"encoding/json"
+	"net"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/clearblade/go-iot"
+	iot "github.com/clearblade/go-iot"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -119,12 +125,26 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 		return
 	}
 
-	os.Setenv("CLEARBLADE_CONFIGURATION", config.Credentials.ValueString())
 	os.Setenv("CLEARBLADE_PROJECT", config.Project.ValueString())
 	os.Setenv("CLEARBLADE_REGION", config.Region.ValueString())
 
+	credentials := &iot.ServiceAccountCredentials{}
+	if err := json.Unmarshal([]byte(config.Credentials.ValueString()), credentials); err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create Clearblade IoT Core API Client",
+			"An unexpected error occurred when creating the Clearblade IoT Core API client. "+
+				"If the error is not clear, please contact the provider developers.\n\n"+
+				"Clearblade IoT Core Client Error: "+err.Error(),
+		)
+		return
+	}
+
 	// Create a new Clearblade IoT Core client using the configuration values
-	client, err := iot.NewService(ctx)
+	client, err := iot.NewService(
+		ctx,
+		iot.WithHTTPClient(p.newHTTPClient()),
+		iot.WithServiceAccountCredentials(credentials),
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create Clearblade IoT Core API Client",
@@ -156,5 +176,18 @@ func (p *clearbladeProvider) Resources(_ context.Context) []func() resource.Reso
 	return []func() resource.Resource{
 		NewDeviceResource,
 		NewDeviceRegistryResource,
+	}
+}
+
+func (p *clearbladeProvider) newHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   2 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			IdleConnTimeout: 60 * time.Second,
+		},
+		Timeout: 5 * time.Second,
 	}
 }
