@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -90,8 +91,6 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 		return
 	}
 
-	ctx = tflog.SetField(ctx, "clearblade_credentials", config.Credentials.ValueString())
-
 	tflog.Debug(ctx, "Creating Clearblade IoT Core client")
 
 	if config.Project.IsUnknown() {
@@ -128,13 +127,15 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 	os.Setenv("CLEARBLADE_PROJECT", config.Project.ValueString())
 	os.Setenv("CLEARBLADE_REGION", config.Region.ValueString())
 
+	if config.Credentials.IsNull() {
+		config.Credentials = basetypes.NewStringValue(os.Getenv("CLEARBLADE_CONFIGURATION"))
+	}
+
 	credentials := &iot.ServiceAccountCredentials{}
 	if err := json.Unmarshal([]byte(config.Credentials.ValueString()), credentials); err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Create Clearblade IoT Core API Client",
-			"An unexpected error occurred when creating the Clearblade IoT Core API client. "+
-				"If the error is not clear, please contact the provider developers.\n\n"+
-				"Clearblade IoT Core Client Error: "+err.Error(),
+			"Invalid Credentials",
+			"Error when setting the Clearblade IoT Core API credentials: "+err.Error(),
 		)
 		return
 	}
