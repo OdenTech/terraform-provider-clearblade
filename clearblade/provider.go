@@ -2,14 +2,12 @@ package clearblade
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/clearblade/go-iot"
-	iot "github.com/clearblade/go-iot"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -17,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -42,9 +39,10 @@ func New() provider.Provider {
 
 // clearbladeProviderModel maps provider schema data to a Go type.
 type clearbladeProviderModel struct {
-	Credentials types.String `tfsdk:"credentials"`
-	Project     types.String `tfsdk:"project"`
-	Region      types.String `tfsdk:"region"`
+	Credentials     types.String `tfsdk:"credentials"`
+	CredentialsFile types.String `tfsdk:"credentials_file"`
+	Project         types.String `tfsdk:"project"`
+	Region          types.String `tfsdk:"region"`
 }
 
 // clearbladeProvider is the provider implementation.
@@ -68,6 +66,10 @@ func (p *clearbladeProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 			"credentials": schema.StringAttribute{
 				Optional:  true,
 				Sensitive: true,
+			},
+			"credentials_file": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: false,
 			},
 			"project": schema.StringAttribute{
 				Optional: true,
@@ -115,6 +117,14 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 		resp.Diagnostics.AddAttributeError(
 			path.Root("credentials"),
 			"Unknown Credentials",
+			"The provider cannot create the Clearblade IoT Core client as there is an unknown configuration value for the Clearblade IoT Core API credentials.",
+		)
+	}
+
+	if config.Credentials.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("credentials_file"),
+			"Unknown Credentials File",
 			"The provider cannot create the Clearblade IoT Core client as there is an unknown configuration value for the Clearblade IoT Core API credentials. "+
 				"Either target apply the source of the value first, set the value statically in the configuration, or use the CLEARBLADE_CONFIGURATION environment variable.",
 		)
@@ -127,15 +137,20 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 	os.Setenv("CLEARBLADE_PROJECT", config.Project.ValueString())
 	os.Setenv("CLEARBLADE_REGION", config.Region.ValueString())
 
-	if config.Credentials.IsNull() {
-		config.Credentials = basetypes.NewStringValue(os.Getenv("CLEARBLADE_CONFIGURATION"))
-	}
-
-	credentials := &iot.ServiceAccountCredentials{}
-	if err := json.Unmarshal([]byte(config.Credentials.ValueString()), credentials); err != nil {
+	var credentialsOption iot.ServiceOption
+	switch {
+	case os.Getenv("CLEARBLADE_CONFIGURATION") != "":
+		credentialsOption = iot.WithFileCredentials()
+	case !config.CredentialsFile.IsNull():
+		os.Setenv("CLEARBLADE_CONFIGURATION", config.CredentialsFile.ValueString())
+		credentialsOption = iot.WithFileCredentials()
+	case !config.Credentials.IsNull():
+		credentialsOption = iot.WithServiceAccountCredentials(config.Credentials.ValueString())
+	default:
 		resp.Diagnostics.AddError(
-			"Invalid Credentials",
-			"Error when setting the Clearblade IoT Core API credentials: "+err.Error(),
+			"Missing Credentials",
+			"The provider cannot create the Clearblade IoT Core client as there is no configuration value for the Clearblade IoT Core API credentials. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the CLEARBLADE_CONFIGURATION environment variable.",
 		)
 		return
 	}
@@ -144,7 +159,7 @@ func (p *clearbladeProvider) Configure(ctx context.Context, req provider.Configu
 	client, err := iot.NewService(
 		ctx,
 		iot.WithHTTPClient(p.newHTTPClient()),
-		iot.WithServiceAccountCredentials(credentials),
+		credentialsOption,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(

@@ -3,7 +3,7 @@ module terraform-provider-clearblade
 go 1.20
 
 require (
-	github.com/clearblade/go-iot v1.0.10
+	github.com/clearblade/go-iot v1.0.11-0.20230630191417-1d63b313e22f
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
 	github.com/hashicorp/terraform-plugin-framework v1.3.3
 	github.com/hashicorp/terraform-plugin-framework-timeouts v0.4.1
@@ -64,4 +64,4 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 )
 
-replace github.com/clearblade/go-iot => github.com/odentech/go-iot v0.0.0-20231004004106-8d658d52adf7
+replace github.com/clearblade/go-iot => github.com/odentech/go-iot v0.0.0-20231013223400-ba83ce539b13
